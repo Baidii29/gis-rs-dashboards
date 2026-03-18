@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GLOF Risk Monitor v2 | Muhammad Ubaid | GIS & RS</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#060d1a;--bg2:#0b1628;--bg3:#0f1e35;--bg4:#132240;
+  --border:rgba(99,179,237,0.12);--border2:rgba(99,179,237,0.22);
+  --accent:#38bdf8;--accent2:#0ea5e9;--ice:#bae6fd;
+  --danger:#ef4444;--warn:#f59e0b;--safe:#10b981;--med:#8b5cf6;
+  --text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg2);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+#header{height:62px;background:var(--bg2);border-bottom:1px solid var(--border2);display:flex;align-items:center;padding:0 24px;position:relative;z-index:1000;box-shadow:0 2px 24px rgba(0,0,0,0.5);flex-shrink:0;}
+.logo-wrap{display:flex;align-items:center;gap:12px;border-right:1px solid var(--border);padding-right:22px;margin-right:22px;}
+.logo-icon{width:38px;height:38px;border-radius:8px;background:linear-gradient(135deg,#0369a1,#0ea5e9);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 16px rgba(14,165,233,0.4);}
+.logo-text{font-family:'Syne',sans-serif;font-weight:800;font-size:0.9rem;letter-spacing:1px;color:#fff;}
+.logo-sub{font-size:0.6rem;color:var(--accent);letter-spacing:2.5px;text-transform:uppercase;font-family:'Space Mono',monospace;}
+.header-title h1{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;color:#fff;}
+.header-title p{font-size:0.65rem;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-top:2px;}
+.header-right{display:flex;align-items:center;gap:14px;margin-left:auto;}
+
+.author-chip{background:var(--bg3);border:1px solid var(--border2);padding:6px 14px;border-radius:8px;text-align:right;}
+.author-name{font-size:0.75rem;font-weight:600;color:var(--accent);font-family:'Syne',sans-serif;}
+.author-role{font-size:0.6rem;color:var(--text3);letter-spacing:1px;text-transform:uppercase;}
+#clock{font-family:'Space Mono',monospace;font-size:0.72rem;color:var(--text2);min-width:100px;}
+
+#tabs{height:46px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:flex-end;padding:0 24px;flex-shrink:0;gap:2px;}
+.tab-btn{padding:10px 22px;font-size:0.75rem;font-family:'Syne',sans-serif;font-weight:600;letter-spacing:0.5px;color:var(--text3);border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;text-transform:uppercase;display:flex;align-items:center;gap:7px;}
+.tab-btn:hover{color:var(--text2);}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+#pages{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column;}
+.page{position:absolute;inset:0;overflow-y:auto;display:none;padding:28px 28px 24px;}
+.page.active{display:block;}
+
+/* KPI */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:28px;}
+.kpi-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:22px;transition:border-color 0.2s;}
+.kpi-card:hover{border-color:var(--border2);}
+.kpi-icon{font-size:1.5rem;margin-bottom:10px;}
+.kpi-val{font-family:'Syne',sans-serif;font-size:2.1rem;font-weight:800;line-height:1;}
+.kpi-lbl{font-size:0.72rem;color:var(--text2);margin-top:7px;line-height:1.5;}
+.kpi-delta{font-size:0.62rem;font-family:'Space Mono',monospace;margin-top:10px;padding:3px 9px;border-radius:10px;display:inline-block;}
+.kc-blue .kpi-val{color:var(--accent);} .kc-blue .kpi-delta{background:rgba(56,189,248,0.1);color:var(--accent);}
+.kc-red .kpi-val{color:var(--danger);} .kc-red .kpi-delta{background:rgba(239,68,68,0.1);color:#fca5a5;}
+.kc-amber .kpi-val{color:var(--warn);} .kc-amber .kpi-delta{background:rgba(245,158,11,0.1);color:#fcd34d;}
+.kc-green .kpi-val{color:var(--safe);} .kc-green .kpi-delta{background:rgba(16,185,129,0.1);color:#6ee7b7;}
+
+/* Charts */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:28px;}
+.chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;}
+.chart-card.wide{grid-column:1/-1;}
+.cc-title{font-family:'Syne',sans-serif;font-size:0.9rem;font-weight:700;color:#fff;margin-bottom:4px;}
+.cc-sub{font-size:0.7rem;color:var(--text3);margin-bottom:4px;}
+.chart-wrap{position:relative;height:210px;margin-top:16px;}
+.chart-wrap.tall{height:240px;}
+.cc-caption{font-size:0.7rem;color:var(--text2);line-height:1.7;margin-top:14px;padding:12px 16px;background:var(--bg3);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;}
+
+/* Map page */
+#page-map{padding:0!important;}
+#map-container{position:relative;height:100%;display:flex;}
+#map{flex:1;}
+#map-sidebar{width:300px;flex-shrink:0;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.ms-section{padding:18px;border-bottom:1px solid var(--border);}
+.ms-section.scroll{flex:1;overflow-y:auto;border-bottom:none;}
+.ms-label{font-size:0.6rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--text3);font-family:'Space Mono',monospace;margin-bottom:12px;}
+.layer-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;}
+.layer-row:last-child{border-bottom:none;}
+.ldot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+.lname{font-size:0.78rem;color:var(--text2);flex:1;}
+.tog{width:34px;height:18px;background:var(--bg4);border-radius:9px;position:relative;transition:background 0.2s;border:1px solid var(--border2);flex-shrink:0;}
+.tog.on{background:var(--accent2);}
+.tok{position:absolute;top:2px;left:2px;width:12px;height:12px;background:#fff;border-radius:50%;transition:transform 0.2s;}
+.tog.on .tok{transform:translateX(16px);}
+.lake-item{padding:11px 12px;border-radius:8px;cursor:pointer;margin-bottom:6px;border:1px solid transparent;transition:all 0.2s;background:var(--bg3);}
+.lake-item:hover{border-color:var(--border2);}
+.lake-item.active{border-color:var(--accent);background:rgba(56,189,248,0.07);}
+.li-top{display:flex;align-items:center;gap:8px;}
+.rdot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.lname2{font-size:0.78rem;font-weight:500;color:var(--text);flex:1;}
+.rbadge{font-size:0.58rem;padding:2px 8px;border-radius:10px;font-family:'Space Mono',monospace;font-weight:700;}
+.rb-critical{background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);}
+.rb-high{background:rgba(245,158,11,0.15);color:#fcd34d;border:1px solid rgba(245,158,11,0.3);}
+.rb-medium{background:rgba(139,92,246,0.15);color:#c4b5fd;border:1px solid rgba(139,92,246,0.3);}
+.rb-low{background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid rgba(16,185,129,0.3);}
+.li-meta{font-size:0.62rem;color:var(--text3);margin-top:4px;padding-left:17px;}
+.map-legend{position:absolute;bottom:20px;left:16px;z-index:800;background:rgba(6,13,26,0.92);border:1px solid var(--border2);border-radius:10px;padding:14px;backdrop-filter:blur(10px);}
+.ml-title{font-size:0.58rem;letter-spacing:2px;text-transform:uppercase;color:var(--text3);font-family:'Space Mono',monospace;margin-bottom:9px;}
+.ml-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.ml-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.ml-lbl{font-size:0.68rem;color:var(--text2);}
+.coord-box{position:absolute;bottom:20px;right:316px;z-index:800;background:rgba(6,13,26,0.88);border:1px solid var(--border);border-radius:6px;padding:7px 13px;font-family:'Space Mono',monospace;font-size:0.62rem;color:var(--text2);}
+
+/* Risk table */
+.page-title{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;color:#fff;margin-bottom:8px;}
+.page-desc{font-size:0.8rem;color:var(--text2);line-height:1.8;max-width:820px;margin-bottom:22px;}
+.search-row{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
+.search-box{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:10px 16px;font-size:0.78rem;color:var(--text);font-family:'Inter',sans-serif;width:280px;outline:none;}
+.search-box:focus{border-color:var(--accent);}
+.filter-btn{padding:9px 16px;border-radius:8px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);font-size:0.72rem;cursor:pointer;transition:all 0.2s;font-family:'Inter',sans-serif;}
+.filter-btn:hover,.filter-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(56,189,248,0.07);}
+.data-table{width:100%;border-collapse:collapse;background:var(--bg2);border-radius:12px;overflow:hidden;border:1px solid var(--border);}
+.data-table th{padding:13px 16px;text-align:left;font-size:0.62rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'Space Mono',monospace;background:var(--bg3);border-bottom:1px solid var(--border2);cursor:pointer;white-space:nowrap;}
+.data-table th:hover{color:var(--accent);}
+.data-table td{padding:14px 16px;font-size:0.76rem;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle;}
+.data-table tr:last-child td{border-bottom:none;}
+.data-table tr:hover td{background:var(--bg3);}
+.risk-pill{display:inline-block;padding:3px 10px;border-radius:10px;font-size:0.62rem;font-family:'Space Mono',monospace;font-weight:700;}
+.rp-critical{background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);}
+.rp-high{background:rgba(245,158,11,0.15);color:#fcd34d;border:1px solid rgba(245,158,11,0.3);}
+.rp-medium{background:rgba(139,92,246,0.15);color:#c4b5fd;border:1px solid rgba(139,92,246,0.3);}
+.rp-low{background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid rgba(16,185,129,0.3);}
+.score-bar{display:flex;align-items:center;gap:8px;}
+.sbar-bg{flex:1;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;min-width:70px;}
+.sbar-fill{height:100%;border-radius:3px;}
+
+/* RS Methodology */
+.method-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:22px;margin-bottom:32px;}
+.method-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:26px;}
+.mc-icon{font-size:2rem;margin-bottom:12px;}
+.mc-name{font-family:'Space Mono',monospace;font-size:1.1rem;font-weight:700;color:var(--accent);margin-bottom:3px;}
+.mc-full{font-size:0.7rem;color:var(--text3);margin-bottom:16px;}
+.formula-box{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:14px;margin-bottom:14px;font-family:'Space Mono',monospace;font-size:0.72rem;text-align:center;color:var(--ice);line-height:1.8;}
+.formula-bands{font-size:0.62rem;color:var(--text3);margin-top:6px;}
+.index-gauge{margin:14px 0;}
+.gauge-label{display:flex;justify-content:space-between;font-size:0.65rem;color:var(--text3);margin-bottom:6px;}
+.gauge-bg{height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;}
+.gauge-fill{height:100%;border-radius:4px;}
+.mc-desc{font-size:0.73rem;color:var(--text2);line-height:1.75;}
+.mc-use{margin-top:14px;padding:12px 14px;background:var(--bg3);border-radius:8px;font-size:0.69rem;color:var(--text2);line-height:1.65;border-left:3px solid var(--accent);}
+.mc-use strong{color:var(--accent);display:block;margin-bottom:4px;font-size:0.62rem;letter-spacing:1px;text-transform:uppercase;}
+.satellite-row{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+.sat-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px;}
+.sat-name{font-family:'Syne',sans-serif;font-weight:700;color:#fff;font-size:0.9rem;margin-bottom:4px;}
+.sat-agency{font-size:0.62rem;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;}
+.sat-detail{font-size:0.71rem;color:var(--text2);line-height:1.7;}
+.sat-spec{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.spec-tag{font-size:0.6rem;padding:3px 9px;border-radius:10px;background:var(--bg3);color:var(--text3);border:1px solid var(--border);}
+
+/* About GLOF */
+.about-hero{background:linear-gradient(135deg,var(--bg3),var(--bg4));border:1px solid var(--border2);border-radius:14px;padding:36px;margin-bottom:28px;position:relative;overflow:hidden;}
+.about-hero::before{content:'🏔️';position:absolute;right:36px;top:50%;transform:translateY(-50%);font-size:7rem;opacity:0.07;}
+.ah-label{font-size:0.6rem;letter-spacing:3px;text-transform:uppercase;color:var(--accent);font-family:'Space Mono',monospace;margin-bottom:10px;}
+.ah-title{font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;color:#fff;margin-bottom:14px;line-height:1.2;}
+.ah-desc{font-size:0.85rem;color:var(--text2);line-height:1.85;max-width:720px;}
+.about-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:28px;}
+.about-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;}
+.acard-icon{font-size:1.8rem;margin-bottom:12px;}
+.acard-title{font-family:'Syne',sans-serif;font-weight:700;font-size:0.92rem;color:#fff;margin-bottom:12px;}
+.acard-text{font-size:0.76rem;color:var(--text2);line-height:1.85;}
+.acard-text li{margin-bottom:8px;padding-left:16px;position:relative;list-style:none;}
+.acard-text li::before{content:'→';position:absolute;left:0;color:var(--accent);}
+.process-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px;}
+.step-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center;}
+.step-num{width:38px;height:38px;border-radius:50%;background:rgba(56,189,248,0.1);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:0.9rem;color:var(--accent);margin:0 auto 12px;}
+.step-icon{font-size:1.5rem;margin-bottom:10px;}
+.step-title{font-size:0.78rem;font-weight:600;color:#fff;margin-bottom:7px;}
+.step-desc{font-size:0.68rem;color:var(--text2);line-height:1.6;}
+.sources-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+.source-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:18px;}
+.src-name{font-family:'Syne',sans-serif;font-weight:700;font-size:0.85rem;color:var(--accent);margin-bottom:4px;}
+.src-full{font-size:0.62rem;color:var(--text3);margin-bottom:9px;}
+.src-desc{font-size:0.69rem;color:var(--text2);line-height:1.6;}
+
+#footer{height:32px;background:var(--bg);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;flex-shrink:0;}
+.fl{font-size:0.6rem;color:var(--text3);font-family:'Space Mono',monospace;}
+.fc{font-size:0.62rem;color:var(--text3);}
+.fc span{color:var(--accent);}
+
+.leaflet-tile{filter:brightness(0.42) saturate(0.35) hue-rotate(185deg);}
+.leaflet-popup-content-wrapper{background:#0b1628!important;color:#e2e8f0!important;border:1px solid rgba(99,179,237,0.3)!important;border-radius:10px!important;box-shadow:0 8px 32px rgba(0,0,0,0.6)!important;}
+.leaflet-popup-tip{background:#0b1628!important;}
+.leaflet-popup-close-button{color:#64748b!important;}
+.popup-head{font-family:'Syne',sans-serif;font-weight:700;font-size:0.95rem;color:#fff;margin-bottom:5px;}
+.popup-coords{font-family:'Space Mono',monospace;font-size:0.58rem;color:#38bdf8;margin-bottom:10px;}
+.popup-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;}
+.popup-item .pk{font-size:0.62rem;color:#64748b;}
+.popup-item .pv{font-size:0.7rem;color:#e2e8f0;font-weight:500;}
+.marker-critical{width:16px;height:16px;border-radius:50%;background:#ef4444;border:2.5px solid #060d1a;box-shadow:0 0 10px rgba(239,68,68,0.8);cursor:pointer;}
+.marker-high{width:14px;height:14px;border-radius:50%;background:#f59e0b;border:2px solid #060d1a;box-shadow:0 0 7px rgba(245,158,11,0.7);cursor:pointer;}
+.marker-medium{width:12px;height:12px;border-radius:50%;background:#8b5cf6;border:2px solid #060d1a;cursor:pointer;}
+.marker-low{width:11px;height:11px;border-radius:50%;background:#10b981;border:2px solid #060d1a;cursor:pointer;}
+.ev-marker{width:18px;height:18px;background:rgba(239,68,68,0.15);border:2px solid #ef4444;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#ef4444;cursor:pointer;}
+</style>
+</head>
+<body style="display:flex;flex-direction:column;height:100vh;">
+
+<div id="header">
+  <div class="logo-wrap">
+    <div class="logo-icon">🏔️</div>
+    <div><div class="logo-text">GLOF MONITOR</div><div class="logo-sub">HKH · Pakistan</div></div>
+  </div>
+  <div class="header-title">
+    <h1>Glacial Lake Outburst Flood Risk Intelligence Dashboard</h1>
+    <p>Hindu Kush · Karakoram · Himalaya — Northern Pakistan</p>
+  </div>
+  <div class="header-right">
+    <div id="clock">--:--:-- PKT</div>
+
+    <div class="author-chip">
+      <div class="author-name">Muhammad Ubaid</div>
+      <div class="author-role">GIS &amp; RS Researcher</div>
+    </div>
+  </div>
+</div>
+
+<div id="tabs">
+  <button class="tab-btn active" onclick="switchTab('overview',this)">📊 Overview</button>
+  <button class="tab-btn" onclick="switchTab('map',this)">🗺️ Map Explorer</button>
+  <button class="tab-btn" onclick="switchTab('risk',this)">⚠️ Risk Table</button>
+  <button class="tab-btn" onclick="switchTab('rs',this)">🛰️ RS Methodology</button>
+  <button class="tab-btn" onclick="switchTab('about',this)">📖 About GLOF</button>
+</div>
+
+<div id="pages" style="flex:1;position:relative;overflow:hidden;">
+
+  <!-- OVERVIEW -->
+  <div class="page active" id="page-overview">
+    <div class="kpi-row">
+      <div class="kpi-card kc-blue"><div class="kpi-icon">🏔️</div><div class="kpi-val">3,044</div><div class="kpi-lbl">Total glacial lakes mapped across Hindu Kush Karakoram Himalaya region</div><div class="kpi-delta">▲ Pakistan holds world's largest count outside poles</div></div>
+      <div class="kpi-card kc-red"><div class="kpi-icon">🚨</div><div class="kpi-val">33</div><div class="kpi-lbl">Critical risk lakes under active PDMA &amp; ICIMOD monitoring</div><div class="kpi-delta">▲ Up from 24 in 2018 — accelerating</div></div>
+      <div class="kpi-card kc-amber"><div class="kpi-icon">👥</div><div class="kpi-val">7.1M</div><div class="kpi-lbl">People living in downstream GLOF flood path corridors</div><div class="kpi-delta">▲ Gilgit-Baltistan most exposed province</div></div>
+      <div class="kpi-card kc-green"><div class="kpi-icon">🧊</div><div class="kpi-val">5,218</div><div class="kpi-lbl">km² active glacier ice cover remaining in HKH region</div><div class="kpi-delta">▼ Shrinking at ~0.5% per year since 1990</div></div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="cc-title">Glacial Lake Area Growth — 1990 to 2024</div>
+        <div class="cc-sub">Total mapped lake surface area in km² · Landsat-derived multi-temporal analysis</div>
+        <div class="chart-wrap tall"><canvas id="chart-area"></canvas></div>
+        <div class="cc-caption">⚠️ Pakistan's glacial lakes have expanded by <strong style="color:#38bdf8">127%</strong> since 1990, driven by accelerating glacier melt due to rising temperatures in the HKH region. This steady growth directly increases dam pressure and GLOF hazard potential each year.</div>
+      </div>
+      <div class="chart-card">
+        <div class="cc-title">GLOF Events per Decade — 1970 to 2024</div>
+        <div class="cc-sub">Recorded glacial lake outburst flood events across KPK, GB &amp; AJK</div>
+        <div class="chart-wrap tall"><canvas id="chart-events"></canvas></div>
+        <div class="cc-caption">📈 GLOF frequency has <strong style="color:#ef4444">increased 8× since the 1970s</strong>. The 2010s saw 35 recorded events — a record. The 2020s are already at 29 with years remaining. Climate change is the primary driver of this dangerous acceleration.</div>
+      </div>
+      <div class="chart-card">
+        <div class="cc-title">Risk Level Distribution of All 3,044 Lakes</div>
+        <div class="cc-sub">Lakes classified by danger category using ICIMOD multi-criteria risk scoring</div>
+        <div class="chart-wrap"><canvas id="chart-donut"></canvas></div>
+        <div class="cc-caption">🔴 Only 1.1% of lakes are Critical — but they pose the highest immediate danger to life and infrastructure. The 580 Medium-risk lakes are being closely watched as warming continues to destabilize mountain terrain.</div>
+      </div>
+      <div class="chart-card">
+        <div class="cc-title">Downstream Population Exposure by Province</div>
+        <div class="cc-sub">Millions of people living within GLOF flood corridor paths</div>
+        <div class="chart-wrap"><canvas id="chart-prov"></canvas></div>
+        <div class="cc-caption">🏘️ Gilgit-Baltistan bears the highest exposure with <strong style="color:#ef4444">3.8 million people</strong> in GLOF paths. Remote mountain terrain severely limits evacuation speed and emergency response capabilities.</div>
+      </div>
+      <div class="chart-card wide">
+        <div class="cc-title">Glacial Lake Expansion by Region — 2000 to 2024</div>
+        <div class="cc-sub">Comparative lake area growth across Pakistan's mountain regions · km² · Sentinel-2 &amp; Landsat derived</div>
+        <div class="chart-wrap"><canvas id="chart-multiline"></canvas></div>
+        <div class="cc-caption">📊 Gilgit-Baltistan shows the most dramatic lake expansion, consistent with its concentration of high-altitude glaciers. KPK (Chitral) has seen accelerated growth post-2015, linked to increasing summer temperatures above 4,000m elevation.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div class="page" id="page-map" style="padding:0!important;overflow:hidden;">
+    <div id="map-container" style="height:100%;display:flex;">
+      <div id="map" style="flex:1;"></div>
+      <div class="map-legend">
+        <div class="ml-title">Risk Level</div>
+        <div class="ml-row"><div class="ml-dot" style="background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,0.7)"></div><span class="ml-lbl">Critical</span></div>
+        <div class="ml-row"><div class="ml-dot" style="background:#f59e0b"></div><span class="ml-lbl">High</span></div>
+        <div class="ml-row"><div class="ml-dot" style="background:#8b5cf6"></div><span class="ml-lbl">Medium</span></div>
+        <div class="ml-row"><div class="ml-dot" style="background:#10b981"></div><span class="ml-lbl">Low</span></div>
+        <div style="border-top:1px solid rgba(99,179,237,0.12);margin:8px 0;"></div>
+        <div class="ml-row"><div style="width:10px;height:10px;background:rgba(239,68,68,0.2);border:1.5px solid #ef4444;border-radius:2px;flex-shrink:0;"></div><span class="ml-lbl">GLOF Event</span></div>
+      </div>
+      <div class="coord-box" id="coord-box">Lat: 36.00° N &nbsp;|&nbsp; Lng: 74.50° E</div>
+      <div id="map-sidebar">
+        <div class="ms-section">
+          <div class="ms-label">Map Layers</div>
+          <div class="layer-row" onclick="toggleLayer('lakes')"><div class="ldot" style="background:#38bdf8"></div><span class="lname">Glacial Lakes</span><div class="tog on" id="tog-lakes"><div class="tok"></div></div></div>
+          <div class="layer-row" onclick="toggleLayer('events')"><div class="ldot" style="background:#ef4444"></div><span class="lname">GLOF Events</span><div class="tog on" id="tog-events"><div class="tok"></div></div></div>
+          <div class="layer-row" onclick="toggleLayer('risk')"><div class="ldot" style="background:#f59e0b"></div><span class="lname">Risk Zones</span><div class="tog on" id="tog-risk"><div class="tok"></div></div></div>
+          <div class="layer-row" onclick="toggleLayer('rivers')"><div class="ldot" style="background:#0ea5e9"></div><span class="lname">River Networks</span><div class="tog" id="tog-rivers"><div class="tok"></div></div></div>
+        </div>
+        <div class="ms-section scroll">
+          <div class="ms-label">Click a lake to explore</div>
+          <div id="lake-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RISK TABLE -->
+  <div class="page" id="page-risk">
+    <div class="page-title">Lake Risk Classification Table</div>
+    <div class="page-desc">Comprehensive database of all monitored glacial lakes in Pakistan's HKH region. Each lake is assessed using a multi-criteria risk score (0–100) combining lake area, dam type, elevation, historical outburst frequency, slope stability, and downstream population exposure. Click any column header to sort. Data sourced from ICIMOD, PDMA, and multi-temporal Landsat/Sentinel-2 satellite analysis.</div>
+    <div class="search-row">
+      <input class="search-box" type="text" placeholder="🔍  Search lake name or region..." oninput="filterTable(this.value)"/>
+      <button class="filter-btn active" onclick="filterRisk('all',this)">All Lakes</button>
+      <button class="filter-btn" onclick="filterRisk('critical',this)">🔴 Critical</button>
+      <button class="filter-btn" onclick="filterRisk('high',this)">🟡 High</button>
+      <button class="filter-btn" onclick="filterRisk('medium',this)">🟣 Medium</button>
+      <button class="filter-btn" onclick="filterRisk('low',this)">🟢 Low</button>
+    </div>
+    <table class="data-table" id="risk-table">
+      <thead><tr>
+        <th onclick="sortTable(0)">Lake Name ↕</th>
+        <th onclick="sortTable(1)">Region ↕</th>
+        <th onclick="sortTable(2)">Risk Level ↕</th>
+        <th onclick="sortTable(3)">Risk Score ↕</th>
+        <th onclick="sortTable(4)">Area (km²) ↕</th>
+        <th onclick="sortTable(5)">Elevation ↕</th>
+        <th onclick="sortTable(6)">Dam Type ↕</th>
+        <th onclick="sortTable(7)">Nearest Town ↕</th>
+        <th onclick="sortTable(8)">Last Event ↕</th>
+      </tr></thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
+
+  <!-- RS METHODOLOGY -->
+  <div class="page" id="page-rs">
+    <div class="page-title">Remote Sensing Methodology</div>
+    <div class="page-desc">This dashboard uses spectral indices derived from multispectral satellite imagery to detect, monitor, and classify glacial lakes and ice cover across the HKH region. The three indices below are the standard analytical tools used in international GLOF risk assessment research and are referenced in ICIMOD and NASA glaciology studies.</div>
+    <div class="method-grid">
+      <div class="method-card">
+        <div class="mc-icon">🌊</div>
+        <div class="mc-name">NDWI</div>
+        <div class="mc-full">Normalized Difference Water Index</div>
+        <div class="formula-box">NDWI = (Green − NIR) / (Green + NIR)<div class="formula-bands">Sentinel-2: (B3 − B8) / (B3 + B8) &nbsp;·&nbsp; Landsat-8: (B3 − B5) / (B3 + B5)</div></div>
+        <div class="index-gauge">
+          <div class="gauge-label"><span>Shishper Lake — Current Value</span><span style="color:#38bdf8;font-family:'Space Mono',monospace;">0.68</span></div>
+          <div class="gauge-bg"><div class="gauge-fill" style="width:68%;background:linear-gradient(90deg,#0369a1,#38bdf8);"></div></div>
+        </div>
+        <div class="mc-desc">NDWI highlights open water bodies by exploiting the strong contrast between green light reflectance and near-infrared absorption by water. Values range from −1 to +1. Values above 0.3 indicate water presence; above 0.5 indicates large open water bodies.</div>
+        <div class="mc-use"><strong>Application in GLOF Research</strong>Used to precisely map glacial lake boundaries and track seasonal and annual expansion. A rising NDWI value in a monitored lake indicates increasing water volume — a key early warning signal for GLOF risk escalation.</div>
+      </div>
+      <div class="method-card">
+        <div class="mc-icon">❄️</div>
+        <div class="mc-name">NDSI</div>
+        <div class="mc-full">Normalized Difference Snow Index</div>
+        <div class="formula-box">NDSI = (Green − SWIR) / (Green + SWIR)<div class="formula-bands">Sentinel-2: (B3 − B11) / (B3 + B11) &nbsp;·&nbsp; Landsat-8: (B3 − B6) / (B3 + B6)</div></div>
+        <div class="index-gauge">
+          <div class="gauge-label"><span>HKH Region — Seasonal Average</span><span style="color:#bae6fd;font-family:'Space Mono',monospace;">0.74</span></div>
+          <div class="gauge-bg"><div class="gauge-fill" style="width:74%;background:linear-gradient(90deg,#075985,#bae6fd);"></div></div>
+        </div>
+        <div class="mc-desc">NDSI differentiates snow and ice from other land cover. Snow and ice strongly reflect green wavelengths but absorb shortwave infrared (SWIR). Values above 0.4 confirm seasonal snow cover; values above 0.6 indicate permanent glacier ice.</div>
+        <div class="mc-use"><strong>Application in GLOF Research</strong>Tracks glacier surface area and ice cover seasonality over time. Decreasing NDSI trends confirm glacier retreat, which weakens natural ice dams, reduces moraine stability, and directly elevates GLOF outburst flood risk.</div>
+      </div>
+      <div class="method-card">
+        <div class="mc-icon">🌿</div>
+        <div class="mc-name">NDVI</div>
+        <div class="mc-full">Normalized Difference Vegetation Index</div>
+        <div class="formula-box">NDVI = (NIR − Red) / (NIR + Red)<div class="formula-bands">Sentinel-2: (B8 − B4) / (B8 + B4) &nbsp;·&nbsp; Landsat-8: (B5 − B4) / (B5 + B4)</div></div>
+        <div class="index-gauge">
+          <div class="gauge-label"><span>Glacial Zone — Terrain Average</span><span style="color:#4ade80;font-family:'Space Mono',monospace;">0.12</span></div>
+          <div class="gauge-bg"><div class="gauge-fill" style="width:12%;background:linear-gradient(90deg,#14532d,#4ade80);"></div></div>
+        </div>
+        <div class="mc-desc">NDVI measures the density of live green vegetation. Values range from −1 (bare rock/water/ice) to +1 (dense forest). In glacial high-altitude zones, values near zero confirm barren rocky or ice terrain with no vegetation buffer.</div>
+        <div class="mc-use"><strong>Application in GLOF Research</strong>Low NDVI confirms glaciated terrain with no vegetation to slow floodwaters. Post-GLOF analysis uses NDVI change detection to map landscape damage, vegetation loss, and soil erosion in downstream flood corridors.</div>
+      </div>
+    </div>
+    <div style="margin-bottom:16px;"><div style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:#fff;margin-bottom:8px;">Satellite Platforms Used</div><div style="font-size:0.78rem;color:var(--text2);line-height:1.7;margin-bottom:18px;">Three primary satellite missions provide the imagery used in this GLOF monitoring dashboard. Each offers different spatial resolution and temporal frequency characteristics suited to specific analysis tasks.</div></div>
+    <div class="satellite-row">
+      <div class="sat-card">
+        <div class="sat-name">Landsat 8 / 9</div>
+        <div class="sat-agency">USGS / NASA — USA</div>
+        <div class="sat-detail">30m multispectral resolution with a continuous archive stretching back to 1972, enabling 50+ year glacial lake change detection. The OLI (Operational Land Imager) sensor provides 11 spectral bands ideal for computing NDWI, NDSI, and NDVI across Pakistan's mountain regions.</div>
+        <div class="sat-spec"><span class="spec-tag">30m resolution</span><span class="spec-tag">11 spectral bands</span><span class="spec-tag">16-day revisit</span><span class="spec-tag">Free archive</span></div>
+      </div>
+      <div class="sat-card">
+        <div class="sat-name">Sentinel-2 A/B</div>
+        <div class="sat-agency">ESA Copernicus — Europe</div>
+        <div class="sat-detail">10–60m multispectral imagery with higher spatial resolution than Landsat for precise lake boundary delineation. The MSI (Multispectral Instrument) sensor with 13 spectral bands and 5-day revisit time enables near-real-time glacial lake monitoring during critical melt seasons.</div>
+        <div class="sat-spec"><span class="spec-tag">10m resolution</span><span class="spec-tag">13 spectral bands</span><span class="spec-tag">5-day revisit</span><span class="spec-tag">Free access</span></div>
+      </div>
+      <div class="sat-card">
+        <div class="sat-name">SRTM DEM</div>
+        <div class="sat-agency">NASA / NGA — USA</div>
+        <div class="sat-detail">30m Digital Elevation Model providing critical terrain data for watershed delineation, slope analysis, and downstream GLOF flood path modeling. Used to compute potential flood runout distances, identify at-risk settlements, and estimate downstream population exposure zones.</div>
+        <div class="sat-spec"><span class="spec-tag">30m DEM</span><span class="spec-tag">Global coverage</span><span class="spec-tag">Flood modeling</span><span class="spec-tag">Terrain analysis</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABOUT GLOF -->
+  <div class="page" id="page-about">
+    <div class="about-hero">
+      <div class="ah-label">Scientific Background</div>
+      <div class="ah-title">What is a Glacial Lake Outburst Flood?</div>
+      <div class="ah-desc">A Glacial Lake Outburst Flood (GLOF) occurs when a natural dam — formed by ice, moraine debris, or bedrock — holding back a glacial lake suddenly fails catastrophically. The resulting flood releases millions of cubic meters of water, ice, and debris within hours, traveling at extreme speeds down mountain valleys and destroying roads, bridges, villages, and farmland with devastating force.</div>
+    </div>
+    <div class="about-grid">
+      <div class="about-card">
+        <div class="acard-icon">🇵🇰</div>
+        <div class="acard-title">Why Pakistan is the World's Most GLOF-Vulnerable Country</div>
+        <div class="acard-text"><ul>
+          <li>Pakistan contains over <strong>7,253 glaciers</strong> — more than anywhere outside the polar regions</li>
+          <li>The HKH region holds <strong>3,044 glacial lakes</strong>, of which 33 are classified as critical danger zones</li>
+          <li>HKH temperatures are rising at <strong>3× the global average</strong> — accelerating glacier melt faster than anywhere on Earth</li>
+          <li>Mountain communities have <strong>very limited early warning systems</strong> and extremely difficult terrain for emergency evacuation</li>
+          <li>Between 1959 and 2020, Pakistan experienced over <strong>150 recorded GLOF events</strong> causing massive loss of life and infrastructure damage</li>
+          <li>In 2022 alone, over <strong>170 GLOF events</strong> struck Pakistan during the catastrophic monsoon flood season</li>
+        </ul></div>
+      </div>
+      <div class="about-card">
+        <div class="acard-icon">⚙️</div>
+        <div class="acard-title">GLOF Dam Types and Failure Mechanisms</div>
+        <div class="acard-text"><ul>
+          <li><strong>Ice-dammed lakes:</strong> Formed when a glacier blocks a valley. Highly unstable — the ice dam can melt rapidly from beneath during warm seasons causing sudden failure</li>
+          <li><strong>Moraine-dammed lakes:</strong> Retained by unstable glacial rock and debris deposits. Prone to collapse from water overtopping, seepage erosion, or earthquake shaking</li>
+          <li><strong>Bedrock-dammed lakes:</strong> More stable but still vulnerable when rapid ice melt raises water levels beyond the dam's containment capacity</li>
+          <li><strong>Triggering factors:</strong> Heavy rainfall events, seismic activity, ice/rock avalanche impact, or rapid temperature spikes can all initiate sudden dam failure</li>
+          <li><strong>Early warning signs:</strong> Rapid lake level rise, increased water turbidity, cracking sounds from ice dam, unusual seismic tremors near the lake</li>
+        </ul></div>
+      </div>
+    </div>
+    <div style="margin-bottom:22px;"><div style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:#fff;margin-bottom:16px;">How a GLOF Forms — Step by Step Process</div>
+    <div class="process-steps">
+      <div class="step-card"><div class="step-num">01</div><div class="step-icon">🌡️</div><div class="step-title">Temperature Rise</div><div class="step-desc">Climate change raises HKH temperatures at 3× the global average, accelerating glacier surface and basal melt rates year over year</div></div>
+      <div class="step-card"><div class="step-num">02</div><div class="step-icon">💧</div><div class="step-title">Lake Formation</div><div class="step-desc">Meltwater accumulates behind natural ice or moraine dams, forming glacial lakes that expand in area and depth each season</div></div>
+      <div class="step-card"><div class="step-num">03</div><div class="step-icon">💥</div><div class="step-title">Dam Failure</div><div class="step-desc">Triggered by rainfall, avalanche impact, or seismic activity — the natural dam suddenly breaches releasing millions of m³ of water</div></div>
+      <div class="step-card"><div class="step-num">04</div><div class="step-icon">🌊</div><div class="step-title">Outburst Flood</div><div class="step-desc">A wall of water, ice, and debris rushes down valleys destroying bridges, villages, roads, and farmland across downstream communities</div></div>
+    </div></div>
+    <div><div style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:#fff;margin-bottom:16px;">Data Sources &amp; Scientific References</div>
+    <div class="sources-row">
+      <div class="source-card"><div class="src-name">ICIMOD</div><div class="src-full">International Centre for Integrated Mountain Development</div><div class="src-desc">Primary source for glacial lake inventory, GLOF risk classification methodology, and HKH regional glacier monitoring data</div></div>
+      <div class="source-card"><div class="src-name">PDMA Pakistan</div><div class="src-full">Provincial Disaster Management Authority</div><div class="src-desc">Historical GLOF event records, downstream population exposure data, and early warning infrastructure status reports</div></div>
+      <div class="source-card"><div class="src-name">USGS / NASA</div><div class="src-full">United States Geological Survey &amp; NASA Earth Observatory</div><div class="src-desc">Landsat satellite imagery archive (1972–present) for lake area change detection, SRTM DEM elevation data, and glacier mass balance studies</div></div>
+      <div class="source-card"><div class="src-name">ESA Copernicus</div><div class="src-full">European Space Agency — Copernicus Earth Observation</div><div class="src-desc">Sentinel-2 multispectral imagery for high-resolution NDWI and NDSI computation and near-real-time glacial lake monitoring</div></div>
+    </div></div>
+  </div>
+
+</div>
+
+<div id="footer">
+  <div class="fl">DATA: ICIMOD · PDMA · USGS Landsat · ESA Sentinel-2 · SRTM DEM · OpenStreetMap</div>
+  <div class="fc">Developed by <span>Muhammad Ubaid</span> · GIS &amp; Remote Sensing Researcher · 2025</div>
+  <div class="fl">© GLOF MONITOR v2.0 · HKH REGION · PAKISTAN</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// Clock
+function updateClock(){const n=new Date();const pkt=new Date(n.getTime()+5*60*60*1000);const h=String(pkt.getUTCHours()).padStart(2,'0');const m=String(pkt.getUTCMinutes()).padStart(2,'0');const s=String(pkt.getUTCSeconds()).padStart(2,'0');document.getElementById('clock').textContent=h+':'+m+':'+s+' PKT';}
+updateClock();setInterval(updateClock,1000);
+
+// Tabs
+let mapInit=false;
+function switchTab(id,btn){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('page-'+id).classList.add('active');
+  if(id==='map'&&!mapInit){initMap();mapInit=true;}
+}
+
+// Data
+const lakes=[
+  {name:"Shishper Lake",   lat:36.1812,lng:74.6823,risk:"critical",score:92,area:"0.87",dam:"Ice-dammed",  elev:"4,210",town:"Hassanabad",event:"May 2022",region:"Hunza, GB"},
+  {name:"Gayari Lake",     lat:35.5082,lng:76.3270,risk:"critical",score:88,area:"1.20",dam:"Moraine",     elev:"4,600",town:"Khaplu",    event:"2012",    region:"Skardu, GB"},
+  {name:"Khurdopin Lake",  lat:36.3500,lng:75.4500,risk:"critical",score:85,area:"0.64",dam:"Ice-dammed",  elev:"4,730",town:"Shimshal",  event:"2019",    region:"Shimshal, GB"},
+  {name:"Minapin Lake",    lat:36.1300,lng:74.6000,risk:"high",    score:72,area:"0.42",dam:"Moraine",     elev:"3,980",town:"Minapin",   event:"2020",    region:"Nagar, GB"},
+  {name:"Badswat Lake",    lat:36.0800,lng:73.6000,risk:"high",    score:70,area:"0.35",dam:"Moraine",     elev:"3,650",town:"Ghizer",    event:"2022",    region:"Ghizer, GB"},
+  {name:"Phander Lake",    lat:36.1700,lng:73.1900,risk:"high",    score:65,area:"0.58",dam:"Debris",      elev:"3,200",town:"Phander",   event:"2017",    region:"Ghizer, GB"},
+  {name:"Chitral GL-7",    lat:35.9200,lng:71.8500,risk:"high",    score:68,area:"0.29",dam:"Moraine",     elev:"4,100",town:"Chitral",   event:"2021",    region:"Chitral, KPK"},
+  {name:"Batura Lake",     lat:36.5800,lng:74.5200,risk:"medium",  score:48,area:"0.31",dam:"Ice-dammed",  elev:"4,890",town:"Pasu",      event:"2015",    region:"Hunza, GB"},
+  {name:"Hispar Lake",     lat:36.0900,lng:75.0100,risk:"medium",  score:44,area:"0.45",dam:"Moraine",     elev:"4,400",town:"Nagar",     event:"2011",    region:"Nagar, GB"},
+  {name:"Barpu Lake",      lat:36.1600,lng:74.8500,risk:"medium",  score:40,area:"0.22",dam:"Debris",      elev:"3,700",town:"Hopar",     event:"2009",    region:"Nagar, GB"},
+  {name:"Chapursan Lake",  lat:36.8200,lng:74.8700,risk:"low",     score:22,area:"0.18",dam:"Moraine",     elev:"4,150",town:"Chapursan", event:"2003",    region:"Hunza, GB"},
+  {name:"Darkot Lake",     lat:36.7200,lng:73.4700,risk:"low",     score:18,area:"0.14",dam:"Moraine",     elev:"4,650",town:"Ishkoman",  event:"1999",    region:"Ghizer, GB"},
+];
+const rc={critical:"#ef4444",high:"#f59e0b",medium:"#8b5cf6",low:"#10b981"};
+
+// Table
+function buildTable(data){
+  const tb=document.getElementById('table-body');tb.innerHTML='';
+  data.forEach(l=>{
+    let bg;
+    if(l.risk==='critical') bg='linear-gradient(90deg,#dc2626,#ef4444)';
+    else if(l.risk==='high') bg='linear-gradient(90deg,#b45309,#f59e0b)';
+    else if(l.risk==='medium') bg='linear-gradient(90deg,#6d28d9,#8b5cf6)';
+    else bg='linear-gradient(90deg,#047857,#10b981)';
+    const tr=document.createElement('tr');
+    tr.setAttribute('data-risk',l.risk);
+    tr.innerHTML=`<td style="font-weight:500;color:#e2e8f0;">${l.name}</td><td>${l.region}</td><td><span class="risk-pill rp-${l.risk}">${l.risk.toUpperCase()}</span></td><td><div class="score-bar"><div class="sbar-bg"><div class="sbar-fill" style="width:${l.score}%;background:${bg}"></div></div><span style="font-family:'Space Mono',monospace;font-size:0.68rem;color:#94a3b8;min-width:28px;">${l.score}</span></div></td><td style="font-family:'Space Mono',monospace;">${l.area} km²</td><td style="font-family:'Space Mono',monospace;">${l.elev} m</td><td>${l.dam}</td><td>${l.town}</td><td style="color:#f59e0b;">${l.event}</td>`;
+    tb.appendChild(tr);
+  });
+}
+buildTable(lakes);
+
+function filterTable(q){document.querySelectorAll('#table-body tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q.toLowerCase())?'':'none';});}
+function filterRisk(risk,btn){
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  document.querySelectorAll('#table-body tr').forEach(r=>{r.style.display=(risk==='all'||r.getAttribute('data-risk')===risk)?'':'none';});
+}
+let sd=1;
+function sortTable(col){
+  const rows=Array.from(document.querySelectorAll('#table-body tr'));
+  rows.sort((a,b)=>{const av=a.cells[col].textContent.trim(),bv=b.cells[col].textContent.trim(),an=parseFloat(av),bn=parseFloat(bv);return(!isNaN(an)&&!isNaN(bn))?(an-bn)*sd:av.localeCompare(bv)*sd;});
+  sd*=-1;const tb=document.getElementById('table-body');rows.forEach(r=>tb.appendChild(r));
+}
+
+// Map
+let map,lakeMarkers=[],eventMarkers=[],riskCircles=[],riverLines=[];
+const layerState={lakes:true,events:true,risk:true,rivers:false};
+
+function initMap(){
+  map=L.map('map',{zoomControl:false}).setView([36.0,74.5],7);
+  L.control.zoom({position:'bottomright'}).addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:18}).addTo(map);
+  map.on('mousemove',function(e){document.getElementById('coord-box').textContent='Lat: '+e.latlng.lat.toFixed(4)+'° N  |  Lng: '+e.latlng.lng.toFixed(4)+'° E';});
+
+  const evts=[
+    {lat:36.1812,lng:74.6823,year:2022,name:"Shishper GLOF",deaths:0,damage:"Hassanabad bridge destroyed"},
+    {lat:35.5082,lng:76.3270,year:2012,name:"Gayari GLOF",deaths:138,damage:"Military camp buried"},
+    {lat:36.3500,lng:75.4500,year:2019,name:"Khurdopin GLOF",deaths:0,damage:"Road blockage, villages isolated"},
+    {lat:36.0800,lng:73.6000,year:2022,name:"Badswat GLOF",deaths:0,damage:"3 villages evacuated"},
+    {lat:35.9200,lng:71.8500,year:2021,name:"Chitral GLOF",deaths:2,damage:"Farmland destroyed"},
+  ];
+
+  lakes.forEach((l,i)=>{
+    const icon=L.divIcon({className:'marker-'+l.risk,iconSize:[16,16],iconAnchor:[8,8]});
+    const m=L.marker([l.lat,l.lng],{icon}).addTo(map);
+    m.bindPopup(`<div class="popup-head">📍 ${l.name}</div><div class="popup-coords">${l.lat}°N, ${l.lng}°E</div><div class="popup-grid"><div class="popup-item"><div class="pk">Risk Level</div><div class="pv" style="color:${rc[l.risk]}">${l.risk.toUpperCase()}</div></div><div class="popup-item"><div class="pk">Risk Score</div><div class="pv">${l.score}/100</div></div><div class="popup-item"><div class="pk">Area</div><div class="pv">${l.area} km²</div></div><div class="popup-item"><div class="pk">Elevation</div><div class="pv">${l.elev} m</div></div><div class="popup-item"><div class="pk">Dam Type</div><div class="pv">${l.dam}</div></div><div class="popup-item"><div class="pk">Nearest Town</div><div class="pv">${l.town}</div></div><div class="popup-item"><div class="pk">Region</div><div class="pv">${l.region}</div></div><div class="popup-item"><div class="pk">Last Event</div><div class="pv" style="color:#f59e0b">${l.event}</div></div></div>`,{maxWidth:280});
+    m.on('click',()=>selectLake(i));
+    lakeMarkers.push(m);
+    riskCircles.push(L.circle([l.lat,l.lng],{radius:l.score*220,color:rc[l.risk],fillColor:rc[l.risk],fillOpacity:0.05,weight:1,opacity:0.25}).addTo(map));
+  });
+
+  evts.forEach(ev=>{
+    const icon=L.divIcon({className:'',html:`<div class="ev-marker">⚡</div>`,iconSize:[18,18],iconAnchor:[9,9]});
+    const m=L.marker([ev.lat,ev.lng],{icon}).addTo(map);
+    m.bindPopup(`<div class="popup-head">⚡ ${ev.name}</div><div class="popup-coords">${ev.lat}°N, ${ev.lng}°E</div><div class="popup-grid"><div class="popup-item"><div class="pk">Year</div><div class="pv">${ev.year}</div></div><div class="popup-item"><div class="pk">Fatalities</div><div class="pv" style="color:#fca5a5">${ev.deaths}</div></div><div class="popup-item"><div class="pk">Impact</div><div class="pv">${ev.damage}</div></div></div>`);
+    eventMarkers.push(m);
+  });
+
+  [[[36.5,74.0],[36.2,74.3],[35.8,74.1],[35.4,73.9],[35.0,73.5]],[[36.8,75.5],[36.5,75.2],[36.1,75.0],[35.6,74.8],[35.2,74.5]],[[36.0,71.8],[35.8,72.3],[35.5,72.8],[35.2,73.1]]].forEach(r=>{
+    riverLines.push(L.polyline(r,{color:'#0ea5e9',weight:1.5,opacity:0.4,dashArray:'5 5'}));
+  });
+
+  const el=document.getElementById('lake-list');
+  lakes.forEach((l,i)=>{
+    const d=document.createElement('div');d.className='lake-item';d.id='li-'+i;
+    d.innerHTML=`<div class="li-top"><div class="rdot" style="background:${rc[l.risk]}"></div><span class="lname2">${l.name}</span><span class="rbadge rb-${l.risk}">${l.risk.toUpperCase()}</span></div><div class="li-meta">${l.region} · ${l.elev} m · ${l.area} km²</div>`;
+    d.onclick=()=>selectLake(i);el.appendChild(d);
+  });
+  selectLake(0);
+}
+
+function selectLake(i){
+  document.querySelectorAll('.lake-item').forEach(el=>el.classList.remove('active'));
+  const li=document.getElementById('li-'+i);if(li)li.classList.add('active');
+  if(map){map.flyTo([lakes[i].lat,lakes[i].lng],12,{duration:1.3});lakeMarkers[i].openPopup();}
+}
+
+function toggleLayer(name){
+  if(!map)return;
+  layerState[name]=!layerState[name];
+  document.getElementById('tog-'+name).classList.toggle('on',layerState[name]);
+  if(name==='lakes') lakeMarkers.forEach(m=>layerState.lakes?map.addLayer(m):map.removeLayer(m));
+  if(name==='events') eventMarkers.forEach(m=>layerState.events?map.addLayer(m):map.removeLayer(m));
+  if(name==='risk') riskCircles.forEach(c=>layerState.risk?map.addLayer(c):map.removeLayer(c));
+  if(name==='rivers'){if(layerState.rivers)riverLines.forEach(l=>map.addLayer(l));else riverLines.forEach(l=>map.removeLayer(l));}
+}
+
+// Charts config
+const co={maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(11,22,40,0.96)',borderColor:'rgba(99,179,237,0.3)',borderWidth:1,titleColor:'#e2e8f0',bodyColor:'#94a3b8',padding:12,cornerRadius:8}},scales:{x:{ticks:{color:'#64748b',font:{size:10,family:"'Space Mono'"}},grid:{color:'rgba(99,179,237,0.05)'},border:{color:'rgba(99,179,237,0.1)'}},y:{ticks:{color:'#64748b',font:{size:10,family:"'Space Mono'"}},grid:{color:'rgba(99,179,237,0.05)'},border:{color:'rgba(99,179,237,0.1)'}}}};
+
+new Chart(document.getElementById('chart-area'),{type:'line',data:{labels:['1990','1995','2000','2005','2010','2015','2020','2024'],datasets:[{label:'Lake Area (km²)',data:[1840,1980,2140,2350,2680,3100,3620,4180],borderColor:'#38bdf8',borderWidth:2.5,fill:true,backgroundColor:'rgba(56,189,248,0.07)',tension:0.4,pointRadius:5,pointBackgroundColor:'#38bdf8',pointBorderColor:'#060d1a',pointBorderWidth:2}]},options:{...co,plugins:{...co.plugins,legend:{display:true,labels:{color:'#94a3b8',font:{size:11}}}}}});
+
+new Chart(document.getElementById('chart-events'),{type:'bar',data:{labels:['1970s','1980s','1990s','2000s','2010s','2020s*'],datasets:[{label:'GLOF Events',data:[4,8,14,22,35,29],backgroundColor:['rgba(239,68,68,0.2)','rgba(239,68,68,0.35)','rgba(239,68,68,0.5)','rgba(239,68,68,0.65)','rgba(239,68,68,0.82)','rgba(239,68,68,0.95)'],borderColor:'#ef4444',borderWidth:1,borderRadius:4}]},options:{...co,plugins:{...co.plugins,legend:{display:true,labels:{color:'#94a3b8',font:{size:11}}}}}});
+
+new Chart(document.getElementById('chart-donut'),{type:'doughnut',data:{labels:['Critical (33)','High (124)','Medium (580)','Low (2,307)'],datasets:[{data:[33,124,580,2307],backgroundColor:['rgba(239,68,68,0.85)','rgba(245,158,11,0.8)','rgba(139,92,246,0.75)','rgba(16,185,129,0.7)'],borderColor:['#dc2626','#d97706','#7c3aed','#059669'],borderWidth:2,hoverOffset:8}]},options:{maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:true,position:'right',labels:{color:'#94a3b8',font:{size:11},boxWidth:12,padding:10}},tooltip:{backgroundColor:'rgba(11,22,40,0.96)',borderColor:'rgba(99,179,237,0.3)',borderWidth:1,titleColor:'#e2e8f0',bodyColor:'#94a3b8',padding:12,cornerRadius:8}}}});
+
+new Chart(document.getElementById('chart-prov'),{type:'bar',data:{labels:['Gilgit-Baltistan','Khyber Pakhtunkhwa','Azad Kashmir','N. Punjab'],datasets:[{label:'Population Exposed (M)',data:[3.8,1.9,0.9,0.5],backgroundColor:['rgba(239,68,68,0.75)','rgba(245,158,11,0.7)','rgba(139,92,246,0.7)','rgba(16,185,129,0.65)'],borderColor:['#ef4444','#f59e0b','#8b5cf6','#10b981'],borderWidth:1,borderRadius:4}]},options:{...co,indexAxis:'y',plugins:{...co.plugins,legend:{display:true,labels:{color:'#94a3b8',font:{size:11}}}}}});
+
+new Chart(document.getElementById('chart-multiline'),{type:'line',data:{labels:['2000','2005','2010','2015','2020','2024'],datasets:[{label:'Gilgit-Baltistan',data:[820,960,1140,1380,1640,1920],borderColor:'#ef4444',borderWidth:2,tension:0.4,fill:false,pointRadius:4,pointBackgroundColor:'#ef4444'},{label:'KPK (Chitral)',data:[320,380,440,530,680,820],borderColor:'#f59e0b',borderWidth:2,tension:0.4,fill:false,pointRadius:4,pointBackgroundColor:'#f59e0b'},{label:'Azad Kashmir',data:[210,240,280,320,370,420],borderColor:'#8b5cf6',borderWidth:2,tension:0.4,fill:false,pointRadius:4,pointBackgroundColor:'#8b5cf6'},{label:'Skardu / Baltistan',data:[480,540,620,720,860,1020],borderColor:'#38bdf8',borderWidth:2,tension:0.4,fill:false,pointRadius:4,pointBackgroundColor:'#38bdf8'}]},options:{...co,plugins:{...co.plugins,legend:{display:true,position:'top',labels:{color:'#94a3b8',font:{size:11},padding:16}}}}});
+</script>
+</body>
+</html>

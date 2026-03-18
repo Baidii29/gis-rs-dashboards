@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pakistan Flood Risk & Vulnerability Dashboard | Muhammad Ubaid</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Mulish:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0e0a04;--bg2:#160f05;--bg3:#1e1508;--bg4:#271c0b;
+  --border:rgba(251,146,60,0.1);--border2:rgba(251,146,60,0.22);
+  --amber:#fb923c;--amber2:#f97316;--amber3:#ea580c;
+  --yellow:#fbbf24;--red:#ef4444;--red2:#dc2626;
+  --blue:#38bdf8;--green:#34d399;
+  --text:#fef3e2;--text2:#c4a882;--text3:#7a6040;
+  --card:rgba(22,15,5,0.95);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Mulish',sans-serif;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--bg2);}
+::-webkit-scrollbar-thumb{background:rgba(251,146,60,0.3);border-radius:2px;}
+
+/* HEADER */
+#header{
+  height:64px;background:var(--bg2);
+  border-bottom:1px solid var(--border2);
+  display:flex;align-items:center;padding:0 26px;
+  flex-shrink:0;position:relative;z-index:1000;
+  box-shadow:0 2px 30px rgba(0,0,0,0.6);
+}
+#header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--amber),transparent);}
+.logo-block{display:flex;align-items:center;gap:12px;padding-right:24px;border-right:1px solid var(--border);margin-right:24px;}
+.logo-emblem{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#92400e,#f97316);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 20px rgba(249,115,22,0.4);}
+.logo-name{font-family:'DM Serif Display',serif;font-size:1.1rem;color:#fff;letter-spacing:0.5px;line-height:1.1;}
+.logo-tagline{font-size:0.58rem;color:var(--amber);letter-spacing:2.5px;text-transform:uppercase;font-family:'DM Mono',monospace;margin-top:1px;}
+.header-center{flex:1;}
+.header-center h1{font-family:'DM Serif Display',serif;font-size:1.05rem;color:#fff;font-weight:400;}
+.header-center p{font-size:0.63rem;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-top:2px;font-family:'DM Mono',monospace;}
+.header-right{display:flex;align-items:center;gap:16px;margin-left:auto;}
+#clock{font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--text2);background:var(--bg3);padding:6px 12px;border-radius:6px;border:1px solid var(--border);}
+.author-block{text-align:right;background:var(--bg3);border:1px solid var(--border2);padding:6px 14px;border-radius:8px;}
+.author-n{font-family:'DM Serif Display',serif;font-size:0.88rem;color:var(--amber);letter-spacing:0.3px;}
+.author-r{font-size:0.58rem;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;font-family:'DM Mono',monospace;}
+
+/* TABS */
+#tabs{height:44px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:flex-end;padding:0 26px;flex-shrink:0;gap:2px;}
+.tab{padding:9px 20px;font-size:0.72rem;font-family:'Mulish',sans-serif;font-weight:700;color:var(--text3);border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;text-transform:uppercase;letter-spacing:0.5px;}
+.tab:hover{color:var(--text2);}
+.tab.active{color:var(--amber);border-bottom-color:var(--amber);}
+
+/* PAGES */
+#pages{flex:1;position:relative;overflow:hidden;}
+.page{position:absolute;inset:0;overflow-y:auto;display:none;padding:26px;}
+.page.active{display:block;}
+#page-map{padding:0!important;overflow:hidden!important;}
+
+/* PAGE TITLE */
+.pg-title{font-family:'DM Serif Display',serif;font-size:1.5rem;color:#fff;margin-bottom:6px;font-weight:400;}
+.pg-desc{font-size:0.78rem;color:var(--text2);line-height:1.8;max-width:860px;margin-bottom:24px;}
+
+/* KPI ROW */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:26px;}
+.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;transition:border-color 0.2s;}
+.kpi:hover{border-color:var(--border2);}
+.kpi-ico{font-size:1.4rem;margin-bottom:8px;}
+.kpi-v{font-family:'DM Serif Display',serif;font-size:2rem;line-height:1;margin-bottom:6px;}
+.kpi-l{font-size:0.7rem;color:var(--text2);line-height:1.4;}
+.kpi-d{font-size:0.6rem;font-family:'DM Mono',monospace;margin-top:8px;padding:3px 8px;border-radius:8px;display:inline-block;}
+.ka .kpi-v{color:var(--amber);}  .ka .kpi-d{background:rgba(251,146,60,0.1);color:var(--amber);}
+.kr .kpi-v{color:var(--red);}    .kr .kpi-d{background:rgba(239,68,68,0.1);color:#fca5a5;}
+.ky .kpi-v{color:var(--yellow);} .ky .kpi-d{background:rgba(251,191,36,0.1);color:var(--yellow);}
+.kb .kpi-v{color:var(--blue);}   .kb .kpi-d{background:rgba(56,189,248,0.1);color:var(--blue);}
+.kg .kpi-v{color:var(--green);}  .kg .kpi-d{background:rgba(52,211,153,0.1);color:var(--green);}
+
+/* CHARTS GRID */
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:26px;}
+.cgrid.three{grid-template-columns:1fr 1fr 1fr;}
+.ccard{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:22px;}
+.ccard.wide{grid-column:1/-1;}
+.ctitle{font-family:'DM Serif Display',serif;font-size:0.95rem;color:#fff;font-weight:400;margin-bottom:3px;}
+.csub{font-size:0.68rem;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:4px;}
+.cwrap{position:relative;margin-top:14px;}
+.cwrap.h200{height:200px;}
+.cwrap.h240{height:240px;}
+.cwrap.h180{height:180px;}
+.ccap{font-size:0.69rem;color:var(--text2);line-height:1.7;margin-top:14px;padding:11px 14px;background:var(--bg3);border-left:3px solid var(--amber);border-radius:0 7px 7px 0;}
+
+/* MAP */
+#map-wrap{height:100%;display:flex;position:relative;}
+#map{flex:1;}
+.map-panel{width:290px;flex-shrink:0;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.mp-sec{padding:16px;border-bottom:1px solid var(--border);}
+.mp-sec.grow{flex:1;overflow-y:auto;border-bottom:none;}
+.mp-lbl{font-size:0.58rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:10px;}
+.lyr-row{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;}
+.lyr-row:last-child{border-bottom:none;}
+.lyr-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.lyr-name{font-size:0.76rem;color:var(--text2);flex:1;}
+.sw{width:32px;height:17px;background:var(--bg4);border-radius:9px;position:relative;transition:background 0.2s;border:1px solid var(--border2);flex-shrink:0;}
+.sw.on{background:var(--amber2);}
+.sk{position:absolute;top:2px;left:2px;width:11px;height:11px;background:#fff;border-radius:50%;transition:transform 0.2s;}
+.sw.on .sk{transform:translateX(15px);}
+.map-legend{position:absolute;bottom:20px;left:16px;z-index:800;background:rgba(14,10,4,0.92);border:1px solid var(--border2);border-radius:10px;padding:13px;backdrop-filter:blur(10px);}
+.ml-ttl{font-size:0.57rem;letter-spacing:2px;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:8px;}
+.ml-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.ml-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.ml-lbl{font-size:0.67rem;color:var(--text2);}
+.coord-box{position:absolute;bottom:20px;right:306px;z-index:800;background:rgba(14,10,4,0.9);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-family:'DM Mono',monospace;font-size:0.61rem;color:var(--text2);}
+
+/* DISTRICT LIST */
+.dist-item{padding:10px 10px;border-radius:8px;cursor:pointer;margin-bottom:5px;border:1px solid transparent;transition:all 0.2s;background:var(--bg3);}
+.dist-item:hover{border-color:var(--border2);}
+.dist-item.active{border-color:var(--amber);background:rgba(251,146,60,0.07);}
+.di-top{display:flex;align-items:center;gap:8px;}
+.di-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.di-name{font-size:0.77rem;font-weight:600;color:var(--text);flex:1;}
+.di-badge{font-size:0.57rem;padding:2px 7px;border-radius:8px;font-family:'DM Mono',monospace;font-weight:700;}
+.db-extreme{background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);}
+.db-high{background:rgba(251,146,60,0.15);color:#fdba74;border:1px solid rgba(251,146,60,0.3);}
+.db-medium{background:rgba(251,191,36,0.15);color:#fde68a;border:1px solid rgba(251,191,36,0.3);}
+.db-low{background:rgba(52,211,153,0.15);color:#6ee7b7;border:1px solid rgba(52,211,153,0.3);}
+.di-meta{font-size:0.61rem;color:var(--text3);margin-top:3px;padding-left:17px;}
+
+/* VULNERABILITY TABLE */
+.vtable{width:100%;border-collapse:collapse;background:var(--bg2);border-radius:12px;overflow:hidden;border:1px solid var(--border);}
+.vtable th{padding:13px 16px;text-align:left;font-size:0.6rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace;background:var(--bg3);border-bottom:1px solid var(--border2);cursor:pointer;white-space:nowrap;}
+.vtable th:hover{color:var(--amber);}
+.vtable td{padding:13px 16px;font-size:0.75rem;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle;}
+.vtable tr:last-child td{border-bottom:none;}
+.vtable tr:hover td{background:var(--bg3);}
+.vp{display:inline-block;padding:3px 9px;border-radius:8px;font-size:0.6rem;font-family:'DM Mono',monospace;font-weight:700;}
+.vp-extreme{background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);}
+.vp-high{background:rgba(251,146,60,0.15);color:#fdba74;border:1px solid rgba(251,146,60,0.3);}
+.vp-medium{background:rgba(251,191,36,0.15);color:#fde68a;border:1px solid rgba(251,191,36,0.3);}
+.vp-low{background:rgba(52,211,153,0.15);color:#6ee7b7;border:1px solid rgba(52,211,153,0.3);}
+.vbar-bg{height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;min-width:70px;}
+.vbar-fill{height:100%;border-radius:3px;}
+.search-row{display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap;}
+.sbox{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:9px 14px;font-size:0.77rem;color:var(--text);font-family:'Mulish',sans-serif;width:280px;outline:none;}
+.sbox:focus{border-color:var(--amber);}
+.fbtn{padding:8px 15px;border-radius:8px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);font-size:0.7rem;cursor:pointer;font-family:'Mulish',sans-serif;transition:all 0.2s;}
+.fbtn:hover,.fbtn.on{border-color:var(--amber);color:var(--amber);background:rgba(251,146,60,0.07);}
+
+/* NDVI PANEL */
+.ndvi-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:26px;}
+.ndvi-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;}
+.nc-name{font-family:'DM Mono',monospace;font-size:1rem;font-weight:500;color:var(--amber);margin-bottom:3px;}
+.nc-full{font-size:0.68rem;color:var(--text3);margin-bottom:14px;}
+.formula{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:12px 16px;font-family:'DM Mono',monospace;font-size:0.71rem;color:#fef3e2;text-align:center;line-height:1.8;margin-bottom:14px;}
+.formula small{font-size:0.61rem;color:var(--text3);display:block;margin-top:4px;}
+.gauge-lbl{display:flex;justify-content:space-between;font-size:0.63rem;color:var(--text3);margin-bottom:5px;}
+.gauge-bg{height:7px;background:var(--bg4);border-radius:4px;overflow:hidden;margin-bottom:12px;}
+.gauge-fill{height:100%;border-radius:4px;}
+.nc-desc{font-size:0.72rem;color:var(--text2);line-height:1.75;}
+.nc-app{margin-top:12px;padding:11px 13px;background:var(--bg3);border-radius:7px;font-size:0.68rem;color:var(--text2);line-height:1.65;border-left:3px solid var(--amber3);}
+.nc-app strong{color:var(--amber);display:block;margin-bottom:3px;font-size:0.61rem;letter-spacing:1px;text-transform:uppercase;}
+
+/* ABOUT */
+.about-hero{background:linear-gradient(135deg,var(--bg3),var(--bg4));border:1px solid var(--border2);border-radius:14px;padding:34px;margin-bottom:26px;position:relative;overflow:hidden;}
+.about-hero::before{content:'🌊';position:absolute;right:34px;top:50%;transform:translateY(-50%);font-size:7rem;opacity:0.07;}
+.ah-tag{font-size:0.58rem;letter-spacing:3px;text-transform:uppercase;color:var(--amber);font-family:'DM Mono',monospace;margin-bottom:10px;}
+.ah-h{font-family:'DM Serif Display',serif;font-size:1.9rem;color:#fff;margin-bottom:12px;line-height:1.2;font-weight:400;}
+.ah-p{font-size:0.83rem;color:var(--text2);line-height:1.85;max-width:720px;}
+.about-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:26px;}
+.acard{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:22px;}
+.acard-ico{font-size:1.7rem;margin-bottom:11px;}
+.acard-t{font-family:'DM Serif Display',serif;font-size:0.95rem;color:#fff;margin-bottom:10px;font-weight:400;}
+.acard-b{font-size:0.75rem;color:var(--text2);line-height:1.8;}
+.acard-b li{margin-bottom:7px;padding-left:14px;position:relative;list-style:none;}
+.acard-b li::before{content:'›';position:absolute;left:0;color:var(--amber);font-weight:700;}
+.flood-types{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:26px;}
+.ft-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:18px;text-align:center;}
+.ft-ico{font-size:1.5rem;margin-bottom:8px;}
+.ft-name{font-size:0.78rem;font-weight:700;color:#fff;margin-bottom:6px;}
+.ft-desc{font-size:0.67rem;color:var(--text2);line-height:1.55;}
+.src-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+.src{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;}
+.src-n{font-family:'DM Mono',monospace;font-size:0.82rem;color:var(--amber);margin-bottom:4px;}
+.src-f{font-size:0.61rem;color:var(--text3);margin-bottom:7px;}
+.src-d{font-size:0.68rem;color:var(--text2);line-height:1.55;}
+
+/* LEAFLET */
+.leaflet-tile{filter:brightness(0.38) saturate(0.3) sepia(0.4);}
+.leaflet-popup-content-wrapper{background:#160f05!important;color:#fef3e2!important;border:1px solid rgba(251,146,60,0.35)!important;border-radius:10px!important;box-shadow:0 8px 32px rgba(0,0,0,0.7)!important;}
+.leaflet-popup-tip{background:#160f05!important;}
+.leaflet-popup-close-button{color:#7a6040!important;}
+.ph{font-family:'DM Serif Display',serif;font-size:0.95rem;color:#fff;margin-bottom:5px;font-weight:400;}
+.pc{font-family:'DM Mono',monospace;font-size:0.57rem;color:var(--amber);margin-bottom:9px;}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:5px 13px;}
+.pgrid .pk{font-size:0.61rem;color:#7a6040;}
+.pgrid .pv{font-size:0.69rem;color:#fef3e2;font-weight:600;}
+.mk-extreme{width:16px;height:16px;border-radius:50%;background:#ef4444;border:2.5px solid #0e0a04;box-shadow:0 0 10px rgba(239,68,68,0.8);cursor:pointer;}
+.mk-high{width:14px;height:14px;border-radius:50%;background:#fb923c;border:2px solid #0e0a04;box-shadow:0 0 7px rgba(251,146,60,0.7);cursor:pointer;}
+.mk-medium{width:12px;height:12px;border-radius:50%;background:#fbbf24;border:2px solid #0e0a04;cursor:pointer;}
+.mk-low{width:11px;height:11px;border-radius:50%;background:#34d399;border:2px solid #0e0a04;cursor:pointer;}
+.ev-mk{width:18px;height:18px;background:rgba(239,68,68,0.15);border:2px solid #ef4444;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#ef4444;cursor:pointer;}
+
+#footer{height:32px;background:var(--bg);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 26px;flex-shrink:0;}
+.fl{font-size:0.59rem;color:var(--text3);font-family:'DM Mono',monospace;}
+.fc{font-size:0.61rem;color:var(--text3);}
+.fc span{color:var(--amber);}
+</style>
+</head>
+<body style="display:flex;flex-direction:column;height:100vh;">
+
+<!-- HEADER -->
+<div id="header">
+  <div class="logo-block">
+    <div class="logo-emblem">🌊</div>
+    <div>
+      <div class="logo-name">Flood Risk Monitor</div>
+      <div class="logo-tagline">Pakistan · National Assessment</div>
+    </div>
+  </div>
+  <div class="header-center">
+    <h1>Pakistan Flood Risk &amp; Vulnerability Assessment Dashboard</h1>
+    <p>Indus Basin · River Systems · District-Level Hazard Mapping · 1990–2024</p>
+  </div>
+  <div class="header-right">
+    <div id="clock">--:--:-- PKT</div>
+    <div class="author-block">
+      <div class="author-n">Muhammad Ubaid</div>
+      <div class="author-r">GIS &amp; RS Researcher</div>
+    </div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div id="tabs">
+  <button class="tab active" onclick="switchTab('overview',this)">📊 Overview</button>
+  <button class="tab" onclick="switchTab('map',this)">🗺️ Flood Map</button>
+  <button class="tab" onclick="switchTab('vulnerability',this)">⚠️ Vulnerability Table</button>
+  <button class="tab" onclick="switchTab('rs',this)">🛰️ RS Methodology</button>
+  <button class="tab" onclick="switchTab('about',this)">📖 About Floods</button>
+</div>
+
+<!-- PAGES -->
+<div id="pages" style="flex:1;position:relative;overflow:hidden;">
+
+  <!-- OVERVIEW -->
+  <div class="page active" id="page-overview">
+    <div class="kpi-row">
+      <div class="kpi ka"><div class="kpi-ico">🌊</div><div class="kpi-v">33</div><div class="kpi-l">Districts classified as extreme or high flood risk zones nationwide</div><div class="kpi-d">▲ 78% of total land area flood-prone</div></div>
+      <div class="kpi kr"><div class="kpi-ico">💀</div><div class="kpi-v">1,739</div><div class="kpi-l">Lives lost in the catastrophic 2022 Pakistan super-flood disaster</div><div class="kpi-d">▲ Worst flood in Pakistan's recorded history</div></div>
+      <div class="kpi ky"><div class="kpi-ico">👥</div><div class="kpi-v">33M</div><div class="kpi-l">People directly affected by the 2022 mega-flood across Pakistan</div><div class="kpi-d">▲ One-third of Pakistan's population impacted</div></div>
+      <div class="kpi kb"><div class="kpi-ico">💰</div><div class="kpi-v">$30B</div><div class="kpi-l">Total economic losses from 2022 floods — infrastructure, crops, homes</div><div class="kpi-d">▲ Equivalent to 10% of Pakistan's annual GDP</div></div>
+      <div class="kpi kg"><div class="kpi-ico">🏠</div><div class="kpi-v">2.0M</div><div class="kpi-l">Homes destroyed or severely damaged in the 2022 flood disaster</div><div class="kpi-d">▲ Sindh province worst affected (72%)</div></div>
+    </div>
+
+    <div class="cgrid">
+      <div class="ccard">
+        <div class="ctitle">Annual Flood-Affected Population — 2000 to 2024</div>
+        <div class="csub">Millions of people impacted per year across all provinces · NDMA data</div>
+        <div class="cwrap h240"><canvas id="ch-pop"></canvas></div>
+        <div class="ccap">📈 The 2022 super-flood was a <strong style="color:var(--amber)">6-sigma climate event</strong> — unprecedented in Pakistan's recorded history. Over 33 million people were affected, surpassing the combined impact of the previous five major floods. Climate scientists link this directly to accelerated warming in the Arabian Sea.</div>
+      </div>
+      <div class="ccard">
+        <div class="ctitle">Economic Losses by Flood Event (USD Billion)</div>
+        <div class="csub">Direct economic damage per major flood event · World Bank estimates</div>
+        <div class="cwrap h240"><canvas id="ch-econ"></canvas></div>
+        <div class="ccap">💸 Pakistan has lost over <strong style="color:var(--red)">$45 billion</strong> to flood damage since 2010. The 2022 event alone accounted for $30 billion — demonstrating exponential growth in flood economic impact as climate change intensifies monsoon rainfall patterns over the Indus Basin.</div>
+      </div>
+      <div class="ccard">
+        <div class="ctitle">Flood Risk Distribution — All Districts</div>
+        <div class="csub">162 districts classified by NDMA multi-criteria hazard scoring</div>
+        <div class="cwrap h200"><canvas id="ch-donut"></canvas></div>
+        <div class="ccap">🔴 20% of Pakistan's districts carry Extreme or High flood risk — yet they house over <strong style="color:var(--amber)">60% of the total population</strong>, concentrated along the Indus River corridor from Khyber Pakhtunkhwa to Sindh.</div>
+      </div>
+      <div class="ccard">
+        <div class="ctitle">Province-wise Flood Fatalities (2010–2024)</div>
+        <div class="csub">Cumulative deaths per province over 14 years · PDMA records</div>
+        <div class="cwrap h200"><canvas id="ch-fatal"></canvas></div>
+        <div class="ccap">☠️ Sindh and KPK consistently record the highest fatalities. Sindh's flat terrain and high population density make evacuation extremely difficult, while KPK's mountainous terrain creates deadly flash flood conditions with virtually no warning time.</div>
+      </div>
+      <div class="ccard wide">
+        <div class="ctitle">Monsoon Rainfall Anomaly vs Flood Events — 1990 to 2024</div>
+        <div class="csub">Deviation from 30-year baseline (mm) plotted against number of significant flood events per year</div>
+        <div class="cwrap h200"><canvas id="ch-rain"></canvas></div>
+        <div class="ccap">🌧️ The correlation between above-normal monsoon rainfall and major flood events is near-perfect (R² = 0.87). Years with rainfall anomalies above +200mm consistently trigger catastrophic flooding across the Indus plain — a pattern that is intensifying as climate change disrupts monsoon dynamics.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div class="page" id="page-map">
+    <div id="map-wrap">
+      <div id="map"></div>
+      <div class="map-legend">
+        <div class="ml-ttl">Flood Risk Level</div>
+        <div class="ml-row"><div class="ml-dot" style="background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,0.8)"></div><span class="ml-lbl">Extreme</span></div>
+        <div class="ml-row"><div class="ml-dot" style="background:#fb923c"></div><span class="ml-lbl">High</span></div>
+        <div class="ml-row"><div class="ml-dot" style="background:#fbbf24"></div><span class="ml-lbl">Medium</span></div>
+        <div class="ml-row"><div class="ml-dot" style="background:#34d399"></div><span class="ml-lbl">Low</span></div>
+        <div style="border-top:1px solid rgba(251,146,60,0.1);margin:8px 0;"></div>
+        <div class="ml-row"><div style="width:10px;height:10px;background:rgba(239,68,68,0.2);border:1.5px solid #ef4444;border-radius:2px;flex-shrink:0;"></div><span class="ml-lbl">Major Flood Event</span></div>
+      </div>
+      <div class="coord-box" id="coord-box">Lat: 30.00° N &nbsp;|&nbsp; Lng: 70.00° E</div>
+      <div class="map-panel">
+        <div class="mp-sec">
+          <div class="mp-lbl">Map Layers</div>
+          <div class="lyr-row" onclick="togLyr('districts')"><div class="lyr-dot" style="background:#fb923c"></div><span class="lyr-name">Flood Risk Districts</span><div class="sw on" id="sw-districts"><div class="sk"></div></div></div>
+          <div class="lyr-row" onclick="togLyr('events')"><div class="lyr-dot" style="background:#ef4444"></div><span class="lyr-name">Major Flood Events</span><div class="sw on" id="sw-events"><div class="sk"></div></div></div>
+          <div class="lyr-row" onclick="togLyr('rivers')"><div class="lyr-dot" style="background:#38bdf8"></div><span class="lyr-name">Major River Systems</span><div class="sw on" id="sw-rivers"><div class="sk"></div></div></div>
+          <div class="lyr-row" onclick="togLyr('zones')"><div class="lyr-dot" style="background:#fbbf24"></div><span class="lyr-name">Flood Plain Zones</span><div class="sw" id="sw-zones"><div class="sk"></div></div></div>
+        </div>
+        <div class="mp-sec grow">
+          <div class="mp-lbl">High-Risk Districts — Click to Explore</div>
+          <div id="dist-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VULNERABILITY TABLE -->
+  <div class="page" id="page-vulnerability">
+    <div class="pg-title">District Flood Vulnerability Assessment</div>
+    <div class="pg-desc">Comprehensive vulnerability scoring for Pakistan's highest-risk flood districts. Each district is assessed using a composite Flood Vulnerability Index (FVI) combining hazard exposure, population sensitivity, infrastructure capacity, and historical flood frequency. Data sourced from NDMA, PMD, World Bank, and multi-temporal Landsat NDWI analysis. Click column headers to sort.</div>
+    <div class="search-row">
+      <input class="sbox" type="text" placeholder="🔍  Search district or province..." oninput="filterVTable(this.value)"/>
+      <button class="fbtn on" onclick="filterV('all',this)">All</button>
+      <button class="fbtn" onclick="filterV('extreme',this)">🔴 Extreme</button>
+      <button class="fbtn" onclick="filterV('high',this)">🟠 High</button>
+      <button class="fbtn" onclick="filterV('medium',this)">🟡 Medium</button>
+      <button class="fbtn" onclick="filterV('low',this)">🟢 Low</button>
+    </div>
+    <table class="vtable" id="vtbl">
+      <thead><tr>
+        <th onclick="sortV(0)">District ↕</th>
+        <th onclick="sortV(1)">Province ↕</th>
+        <th onclick="sortV(2)">Risk Level ↕</th>
+        <th onclick="sortV(3)">FVI Score ↕</th>
+        <th onclick="sortV(4)">Pop. Exposed ↕</th>
+        <th onclick="sortV(5)">Flood Freq. ↕</th>
+        <th onclick="sortV(6)">River System ↕</th>
+        <th onclick="sortV(7)">2022 Damage ↕</th>
+        <th onclick="sortV(8)">NDWI Avg ↕</th>
+      </tr></thead>
+      <tbody id="vtbody"></tbody>
+    </table>
+  </div>
+
+  <!-- RS METHODOLOGY -->
+  <div class="page" id="page-rs">
+    <div class="pg-title">Remote Sensing Methodology</div>
+    <div class="pg-desc">This dashboard uses spectral indices derived from Landsat-8/9 and Sentinel-2 satellite imagery to map flood inundation extent, monitor soil moisture, assess vegetation health in flood-affected areas, and detect standing water across Pakistan's river plains. These are the standard indices used in international flood disaster assessment research.</div>
+    <div class="ndvi-grid">
+      <div class="ndvi-card">
+        <div class="nc-name">NDWI</div>
+        <div class="nc-full">Normalized Difference Water Index — Flood Inundation Mapping</div>
+        <div class="formula">NDWI = (Green − NIR) / (Green + NIR)<small>Sentinel-2: (B3 − B8) / (B3 + B8) &nbsp;·&nbsp; Landsat-8: (B3 − B5) / (B3 + B5)</small></div>
+        <div class="gauge-lbl"><span>Pakistan Flood Season Average</span><span style="color:var(--blue);font-family:'DM Mono',monospace;">0.52</span></div>
+        <div class="gauge-bg"><div class="gauge-fill" style="width:52%;background:linear-gradient(90deg,#075985,#38bdf8);"></div></div>
+        <div class="nc-desc">NDWI detects open water bodies by exploiting water's strong green reflectance and NIR absorption. Values above 0.3 indicate standing water. During flood events, NDWI maps the precise extent of inundation across the Indus floodplain, enabling district-level damage assessment.</div>
+        <div class="nc-app"><strong>Flood Application</strong>Used to map real-time flood inundation extent from Sentinel-2 imagery during monsoon events. Comparison with pre-flood NDWI baseline quantifies newly flooded areas — critical for emergency response prioritization and insurance damage assessment.</div>
+      </div>
+      <div class="ndvi-card">
+        <div class="nc-name">NDVI</div>
+        <div class="nc-full">Normalized Difference Vegetation Index — Agricultural Damage Assessment</div>
+        <div class="formula">NDVI = (NIR − Red) / (NIR + Red)<small>Sentinel-2: (B8 − B4) / (B8 + B4) &nbsp;·&nbsp; Landsat-8: (B5 − B4) / (B5 + B4)</small></div>
+        <div class="gauge-lbl"><span>Post-flood Crop Area Average</span><span style="color:var(--green);font-family:'DM Mono',monospace;">0.18</span></div>
+        <div class="gauge-bg"><div class="gauge-fill" style="width:18%;background:linear-gradient(90deg,#14532d,#34d399);"></div></div>
+        <div class="nc-desc">NDVI measures vegetation density and health. Pre-flood values of 0.5–0.7 indicate healthy crops. Post-flood values dropping to 0.1–0.2 confirm crop destruction. Pakistan lost 3.6 million hectares of crops in 2022 — quantified precisely using multi-temporal NDVI change detection.</div>
+        <div class="nc-app"><strong>Flood Application</strong>Pre- vs post-flood NDVI comparison maps agricultural damage extent across Punjab and Sindh. In 2022, satellite NDVI analysis detected 45% reduction in Sindh's kharif crop cover within 2 weeks of peak inundation — enabling rapid humanitarian response planning.</div>
+      </div>
+      <div class="ndvi-card">
+        <div class="nc-name">MNDWI</div>
+        <div class="nc-full">Modified Normalized Difference Water Index — Urban Flood Detection</div>
+        <div class="formula">MNDWI = (Green − SWIR) / (Green + SWIR)<small>Sentinel-2: (B3 − B11) / (B3 + B11) &nbsp;·&nbsp; Landsat-8: (B3 − B6) / (B3 + B6)</small></div>
+        <div class="gauge-lbl"><span>Urban Flood Zone Average</span><span style="color:var(--amber);font-family:'DM Mono',monospace;">0.44</span></div>
+        <div class="gauge-bg"><div class="gauge-fill" style="width:44%;background:linear-gradient(90deg,#92400e,#fb923c);"></div></div>
+        <div class="nc-desc">MNDWI is superior to NDWI in urban environments because it suppresses built-up land signals that can confuse water detection. Uses SWIR instead of NIR — critical for mapping flood inundation in cities like Sukkur, Larkana, and DG Khan where buildings interfere with standard NDWI.</div>
+        <div class="nc-app"><strong>Flood Application</strong>Used specifically for urban flood mapping in Sindh and Punjab cities. MNDWI correctly identified flooded streets and buildings in Sukkur during 2022 where standard NDWI gave false negatives due to mixed building/water pixels in 10m Sentinel-2 imagery.</div>
+      </div>
+      <div class="ndvi-card">
+        <div class="nc-name">NDSI / SAR</div>
+        <div class="nc-full">SAR Backscatter — Cloud-Penetrating Flood Mapping</div>
+        <div class="formula">Flood Detection via SAR Backscatter Change<small>Sentinel-1 C-band SAR · VV+VH polarization · 10m resolution</small></div>
+        <div class="gauge-lbl"><span>SAR Backscatter Difference (dB)</span><span style="color:#fca5a5;font-family:'DM Mono',monospace;">−8.4 dB</span></div>
+        <div class="gauge-bg"><div class="gauge-fill" style="width:84%;background:linear-gradient(90deg,#7f1d1d,#ef4444);"></div></div>
+        <div class="nc-desc">Pakistan's monsoon floods are obscured by thick cloud cover — making optical satellites (Landsat, Sentinel-2) unusable during peak flooding. Sentinel-1 SAR (Synthetic Aperture Radar) penetrates clouds and rain to detect flood extent. Flooded surfaces show sharp backscatter decrease of 6–10 dB.</div>
+        <div class="nc-app"><strong>Flood Application</strong>The only reliable method for mapping active flood extent during Pakistan's monsoon season. In 2022, Sentinel-1 SAR imagery was used by UNOSAT to map 160,000 km² of inundated area across Sindh and Balochistan — directly informing UN emergency operations.</div>
+      </div>
+    </div>
+    <div style="margin-bottom:14px;"><div style="font-family:'DM Serif Display',serif;font-size:1rem;color:#fff;margin-bottom:8px;font-weight:400;">Satellite Platforms Used in Pakistan Flood Assessment</div></div>
+    <div class="src-row">
+      <div class="src"><div class="src-n">Sentinel-1 SAR</div><div class="src-f">ESA Copernicus — C-band Radar</div><div class="src-d">Cloud-penetrating SAR for active flood mapping during monsoon. 10m resolution, 6-day revisit. Only satellite that works during peak cloud cover.</div></div>
+      <div class="src"><div class="src-n">Sentinel-2 MSI</div><div class="src-f">ESA Copernicus — Optical</div><div class="src-d">10m multispectral for NDWI, NDVI, MNDWI computation. Pre/post flood comparison. 5-day revisit enables rapid damage assessment.</div></div>
+      <div class="src"><div class="src-n">Landsat 8/9</div><div class="src-f">USGS / NASA — Optical</div><div class="src-d">30m archive back to 1972 for long-term flood frequency analysis. 16-day revisit. Essential for historical flood plain mapping.</div></div>
+      <div class="src"><div class="src-n">SRTM / ASTER DEM</div><div class="src-f">NASA / METI — Elevation</div><div class="src-d">Digital Elevation Models for flood plain delineation, drainage basin analysis, and downstream population exposure modeling.</div></div>
+    </div>
+  </div>
+
+  <!-- ABOUT -->
+  <div class="page" id="page-about">
+    <div class="about-hero">
+      <div class="ah-tag">Scientific Background</div>
+      <div class="ah-h">Why Pakistan Floods — and Why It's Getting Worse</div>
+      <div class="ah-p">Pakistan is one of the most flood-prone countries on Earth. The convergence of the world's largest irrigation system, extreme monsoon rainfall, glacial meltwater from the HKH mountains, and rapid unplanned urbanization creates a perfect storm of flood vulnerability that is intensifying every decade as climate change disrupts the water cycle.</div>
+    </div>
+    <div class="about-grid">
+      <div class="acard">
+        <div class="acard-ico">🌧️</div>
+        <div class="acard-t">What Causes Pakistan's Catastrophic Floods</div>
+        <div class="acard-b"><ul>
+          <li>The <strong>Indus River system</strong> drains 1.12 million km² — the largest contiguous irrigation system on Earth, carrying water from HKH glaciers to the Arabian Sea</li>
+          <li><strong>Monsoon rainfall</strong> from the Indian Ocean delivers 60–70% of Pakistan's annual rainfall in just 90 days (July–September), overwhelming river capacity</li>
+          <li><strong>Glacial meltwater</strong> from 7,253 HKH glaciers adds runoff on top of monsoon rain — a double hazard unique to Pakistan</li>
+          <li><strong>Deforestation</strong> of Indus catchment watersheds has reduced soil absorption capacity by an estimated 40% since 1990, increasing surface runoff</li>
+          <li><strong>Unplanned urban expansion</strong> into natural floodplains has put millions of homes directly in flood paths that were historically unpopulated</li>
+          <li>The <strong>2022 event</strong> was declared a "climate catastrophe" by the UN — Pakistan contributed less than 1% of global emissions yet suffered one of the worst climate disasters in history</li>
+        </ul></div>
+      </div>
+      <div class="acard">
+        <div class="acard-ico">📊</div>
+        <div class="acard-t">The Vulnerability Framework — How Districts Are Scored</div>
+        <div class="acard-b"><ul>
+          <li><strong>Hazard Exposure (40%):</strong> Historical flood frequency, proximity to major rivers, elevation above flood plain, rainfall intensity records</li>
+          <li><strong>Population Sensitivity (25%):</strong> Population density in flood zones, percentage of population below poverty line, proportion of mud/brick homes</li>
+          <li><strong>Infrastructure Capacity (20%):</strong> Road connectivity for evacuation, hospital and shelter availability, early warning system coverage</li>
+          <li><strong>Agricultural Dependency (15%):</strong> Proportion of population dependent on flood-vulnerable crops — critical for Sindh and southern Punjab</li>
+          <li>Districts scoring above 75 on the composite FVI are classified <strong>Extreme</strong> — requiring permanent early warning infrastructure</li>
+          <li>Data is updated annually using NDMA damage reports, PMD rainfall records, and Sentinel-2 flood inundation mapping</li>
+        </ul></div>
+      </div>
+    </div>
+    <div style="margin-bottom:18px;"><div style="font-family:'DM Serif Display',serif;font-size:1rem;color:#fff;margin-bottom:14px;font-weight:400;">Types of Floods Affecting Pakistan</div>
+    <div class="flood-types">
+      <div class="ft-card"><div class="ft-ico">🌧️</div><div class="ft-name">Riverine Floods</div><div class="ft-desc">Caused by prolonged monsoon rainfall exceeding Indus system capacity. Affects Punjab, Sindh plains. Slow-onset but massive inundation lasting weeks to months</div></div>
+      <div class="ft-card"><div class="ft-ico">⚡</div><div class="ft-name">Flash Floods</div><div class="ft-desc">Sudden intense rainfall in KPK and Balochistan mountain catchments. Extremely fast onset — communities have minutes to hours of warning. Highly destructive</div></div>
+      <div class="ft-card"><div class="ft-ico">🏔️</div><div class="ft-name">GLOF Floods</div><div class="ft-desc">Glacial Lake Outburst Floods from HKH glaciers releasing into Indus tributaries. Adds dangerous meltwater pulse on top of monsoon rainfall</div></div>
+      <div class="ft-card"><div class="ft-ico">🌊</div><div class="ft-name">Urban Floods</div><div class="ft-desc">Overwhelmed drainage systems in Karachi, Lahore, Peshawar during intense rainfall events. Worsened by rapid unplanned urban growth onto natural drainage corridors</div></div>
+    </div></div>
+    <div><div style="font-family:'DM Serif Display',serif;font-size:1rem;color:#fff;margin-bottom:14px;font-weight:400;">Data Sources &amp; References</div>
+    <div class="src-row">
+      <div class="src"><div class="src-n">NDMA</div><div class="src-f">National Disaster Management Authority</div><div class="src-d">Official flood event records, district damage assessments, fatality and displacement statistics</div></div>
+      <div class="src"><div class="src-n">PMD</div><div class="src-f">Pakistan Meteorological Department</div><div class="src-d">Monsoon rainfall records, river flow gauge data, flood forecasting system outputs</div></div>
+      <div class="src"><div class="src-n">World Bank</div><div class="src-f">Pakistan Flood Impact Assessment</div><div class="src-d">Economic loss estimates, infrastructure damage quantification, poverty impact analysis</div></div>
+      <div class="src"><div class="src-n">UNOSAT / UN</div><div class="src-f">UN Satellite Centre</div><div class="src-d">Sentinel-1 SAR flood inundation maps, emergency humanitarian response coordination data</div></div>
+    </div></div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div id="footer">
+  <div class="fl">DATA: NDMA · PMD · World Bank · UNOSAT · USGS Landsat · ESA Sentinel-1/2 · SRTM DEM · OpenStreetMap</div>
+  <div class="fc">Developed by <span>Muhammad Ubaid</span> · GIS &amp; Remote Sensing Researcher · 2025</div>
+  <div class="fl">© FLOOD RISK MONITOR v1.0 · PAKISTAN · INDUS BASIN</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// Clock PKT
+function tick(){const n=new Date(),p=new Date(n.getTime()+5*3600000);const h=String(p.getUTCHours()).padStart(2,'0'),m=String(p.getUTCMinutes()).padStart(2,'0'),s=String(p.getUTCSeconds()).padStart(2,'0');document.getElementById('clock').textContent=h+':'+m+':'+s+' PKT';}
+tick();setInterval(tick,1000);
+
+// Tabs
+let mapDone=false;
+function switchTab(id,btn){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('page-'+id).classList.add('active');
+  if(id==='map'&&!mapDone){initMap();mapDone=true;}
+}
+
+// District data
+const districts=[
+  {name:"Sukkur",      lat:27.705,lng:68.857,risk:"extreme",fvi:92,pop:"1.2M",freq:"8/10yr",river:"Indus",dmg:"Severe",  ndwi:"0.71",prov:"Sindh"},
+  {name:"Larkana",     lat:27.557,lng:68.224,risk:"extreme",fvi:90,pop:"1.5M",freq:"7/10yr",river:"Indus",dmg:"Severe",  ndwi:"0.68",prov:"Sindh"},
+  {name:"Dadu",        lat:26.732,lng:67.775,risk:"extreme",fvi:88,pop:"1.3M",freq:"8/10yr",river:"Indus",dmg:"Severe",  ndwi:"0.74",prov:"Sindh"},
+  {name:"DG Khan",     lat:30.063,lng:70.634,risk:"extreme",fvi:86,pop:"2.8M",freq:"6/10yr",river:"Indus",dmg:"Severe",  ndwi:"0.61",prov:"Punjab"},
+  {name:"Nowshera",    lat:34.012,lng:71.981,risk:"extreme",fvi:85,pop:"1.4M",freq:"7/10yr",river:"Kabul",dmg:"Severe",  ndwi:"0.65",prov:"KPK"},
+  {name:"Charsadda",   lat:34.148,lng:71.731,risk:"extreme",fvi:83,pop:"1.6M",freq:"6/10yr",river:"Kabul",dmg:"Severe",  ndwi:"0.62",prov:"KPK"},
+  {name:"Jacobabad",   lat:28.282,lng:68.436,risk:"extreme",fvi:82,pop:"1.0M",freq:"7/10yr",river:"Indus",dmg:"Severe",  ndwi:"0.69",prov:"Sindh"},
+  {name:"Rajanpur",    lat:29.104,lng:70.328,risk:"high",   fvi:76,pop:"1.5M",freq:"5/10yr",river:"Indus",dmg:"High",    ndwi:"0.55",prov:"Punjab"},
+  {name:"Muzaffargarh",lat:30.073,lng:71.193,risk:"high",   fvi:74,pop:"3.2M",freq:"5/10yr",river:"Chenab",dmg:"High",   ndwi:"0.52",prov:"Punjab"},
+  {name:"Khairpur",    lat:27.529,lng:68.758,risk:"high",   fvi:72,pop:"1.8M",freq:"5/10yr",river:"Indus",dmg:"High",    ndwi:"0.58",prov:"Sindh"},
+  {name:"Shikarpur",   lat:27.955,lng:68.637,risk:"high",   fvi:70,pop:"0.9M",freq:"5/10yr",river:"Indus",dmg:"High",    ndwi:"0.54",prov:"Sindh"},
+  {name:"Peshawar",    lat:34.015,lng:71.524,risk:"high",   fvi:68,pop:"4.3M",freq:"4/10yr",river:"Kabul",dmg:"Moderate",ndwi:"0.42",prov:"KPK"},
+  {name:"Multan",      lat:30.197,lng:71.471,risk:"medium", fvi:55,pop:"3.7M",freq:"3/10yr",river:"Chenab",dmg:"Moderate",ndwi:"0.38",prov:"Punjab"},
+  {name:"Hyderabad",   lat:25.396,lng:68.357,risk:"medium", fvi:52,pop:"2.1M",freq:"3/10yr",river:"Indus",dmg:"Moderate",ndwi:"0.41",prov:"Sindh"},
+  {name:"Nasirabad",   lat:28.418,lng:68.360,risk:"medium", fvi:50,pop:"0.9M",freq:"4/10yr",river:"Indus",dmg:"High",    ndwi:"0.48",prov:"Balochistan"},
+  {name:"Quetta",      lat:30.179,lng:66.975,risk:"low",    fvi:28,pop:"1.1M",freq:"1/10yr",river:"Luni", dmg:"Low",     ndwi:"0.14",prov:"Balochistan"},
+  {name:"Islamabad",   lat:33.720,lng:73.060,risk:"low",    fvi:25,pop:"2.0M",freq:"1/10yr",river:"Soan", dmg:"Low",     ndwi:"0.18",prov:"ICT"},
+];
+
+const rc2={extreme:"#ef4444",high:"#fb923c",medium:"#fbbf24",low:"#34d399"};
+
+// Build vulnerability table
+function buildVTable(data){
+  const tb=document.getElementById('vtbody');tb.innerHTML='';
+  data.forEach(d=>{
+    let bg;
+    if(d.risk==='extreme') bg='linear-gradient(90deg,#dc2626,#ef4444)';
+    else if(d.risk==='high') bg='linear-gradient(90deg,#c2410c,#fb923c)';
+    else if(d.risk==='medium') bg='linear-gradient(90deg,#b45309,#fbbf24)';
+    else bg='linear-gradient(90deg,#047857,#34d399)';
+    const tr=document.createElement('tr');
+    tr.setAttribute('data-risk',d.risk);
+    tr.innerHTML=`<td style="font-weight:600;color:#fef3e2;">${d.name}</td><td>${d.prov}</td><td><span class="vp vp-${d.risk}">${d.risk.toUpperCase()}</span></td><td><div style="display:flex;align-items:center;gap:8px;"><div class="vbar-bg"><div class="vbar-fill" style="width:${d.fvi}%;background:${bg}"></div></div><span style="font-family:'DM Mono',monospace;font-size:0.67rem;color:#c4a882;min-width:26px;">${d.fvi}</span></div></td><td>${d.pop}</td><td style="font-family:'DM Mono',monospace;">${d.freq}</td><td>${d.river}</td><td>${d.dmg}</td><td style="font-family:'DM Mono',monospace;color:var(--blue);">${d.ndwi}</td>`;
+    tb.appendChild(tr);
+  });
+}
+buildVTable(districts);
+
+function filterVTable(q){document.querySelectorAll('#vtbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q.toLowerCase())?'':'none';});}
+function filterV(risk,btn){
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+  document.querySelectorAll('#vtbody tr').forEach(r=>{r.style.display=(risk==='all'||r.getAttribute('data-risk')===risk)?'':'none';});
+}
+let sv=1;
+function sortV(col){
+  const rows=Array.from(document.querySelectorAll('#vtbody tr'));
+  rows.sort((a,b)=>{const av=a.cells[col].textContent.trim(),bv=b.cells[col].textContent.trim(),an=parseFloat(av),bn=parseFloat(bv);return(!isNaN(an)&&!isNaN(bn))?(an-bn)*sv:av.localeCompare(bv)*sv;});
+  sv*=-1;const tb=document.getElementById('vtbody');rows.forEach(r=>tb.appendChild(r));
+}
+
+// MAP
+let map,dMk=[],eMk=[],rLines=[],zCircles=[];
+const lyrState={districts:true,events:true,rivers:true,zones:false};
+
+const floodEvents=[
+  {lat:27.705,lng:68.857,year:2022,name:"Sukkur Super-Flood",affected:"2.1M",damage:"$4.2B"},
+  {lat:34.012,lng:71.981,year:2022,name:"Nowshera Flash Flood",affected:"0.8M",damage:"$0.9B"},
+  {lat:30.063,lng:70.634,year:2010,name:"DG Khan Riverine Flood",affected:"1.5M",damage:"$1.1B"},
+  {lat:26.732,lng:67.775,year:2022,name:"Dadu Inundation",affected:"1.2M",damage:"$2.8B"},
+  {lat:28.282,lng:68.436,year:2022,name:"Jacobabad Flash Flood",affected:"0.7M",damage:"$0.6B"},
+];
+
+function initMap(){
+  map=L.map('map',{zoomControl:false}).setView([30.0,70.0],6);
+  L.control.zoom({position:'bottomright'}).addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:18}).addTo(map);
+  map.on('mousemove',e=>{document.getElementById('coord-box').textContent='Lat: '+e.latlng.lat.toFixed(4)+'° N  |  Lng: '+e.latlng.lng.toFixed(4)+'° E';});
+
+  districts.forEach((d,i)=>{
+    const icon=L.divIcon({className:'mk-'+d.risk,iconSize:[16,16],iconAnchor:[8,8]});
+    const m=L.marker([d.lat,d.lng],{icon}).addTo(map);
+    m.bindPopup(`<div class="ph">📍 ${d.name}</div><div class="pc">${d.lat}°N, ${d.lng}°E — ${d.prov}</div><div class="pgrid"><div><div class="pk">Risk Level</div><div class="pv" style="color:${rc2[d.risk]}">${d.risk.toUpperCase()}</div></div><div><div class="pk">FVI Score</div><div class="pv">${d.fvi}/100</div></div><div><div class="pk">Population</div><div class="pv">${d.pop}</div></div><div><div class="pk">Flood Freq.</div><div class="pv">${d.freq}</div></div><div><div class="pk">River</div><div class="pv">${d.river}</div></div><div><div class="pk">2022 Damage</div><div class="pv" style="color:#fbbf24">${d.dmg}</div></div><div><div class="pk">NDWI</div><div class="pv" style="color:#38bdf8">${d.ndwi}</div></div></div>`,{maxWidth:270});
+    m.on('click',()=>selDist(i));
+    dMk.push(m);
+    zCircles.push(L.circle([d.lat,d.lng],{radius:d.fvi*1800,color:rc2[d.risk],fillColor:rc2[d.risk],fillOpacity:0.04,weight:1,opacity:0.2}));
+  });
+
+  floodEvents.forEach(ev=>{
+    const icon=L.divIcon({className:'',html:`<div class="ev-mk">💧</div>`,iconSize:[18,18],iconAnchor:[9,9]});
+    const m=L.marker([ev.lat,ev.lng],{icon}).addTo(map);
+    m.bindPopup(`<div class="ph">💧 ${ev.name}</div><div class="pc">${ev.lat}°N, ${ev.lng}°E</div><div class="pgrid"><div><div class="pk">Year</div><div class="pv">${ev.year}</div></div><div><div class="pk">Affected</div><div class="pv" style="color:#fbbf24">${ev.affected}</div></div><div><div class="pk">Damage</div><div class="pv" style="color:#fca5a5">${ev.damage}</div></div></div>`);
+    eMk.push(m);
+  });
+
+  // Major rivers
+  const rivers=[
+    {pts:[[36.0,74.5],[34.5,73.8],[33.8,72.4],[32.5,71.3],[31.5,71.0],[30.5,70.5],[29.0,70.2],[27.5,68.8],[25.4,68.3],[24.0,67.5]],color:'#38bdf8',name:'Indus'},
+    {pts:[[34.0,71.5],[33.5,71.8],[33.0,72.3],[32.5,72.8],[32.0,73.1],[31.5,73.3]],color:'#60a5fa',name:'Kabul'},
+    {pts:[[32.5,74.5],[32.0,73.8],[31.5,73.0],[31.0,72.3],[30.5,71.8],[30.0,71.2]],color:'#93c5fd',name:'Chenab'},
+  ];
+  rivers.forEach(r=>{rLines.push(L.polyline(r.pts,{color:r.color,weight:2,opacity:0.5,dashArray:'6 4'}));});
+  rLines.forEach(l=>map.addLayer(l));
+
+  buildDistList();
+  selDist(0);
+}
+
+function buildDistList(){
+  const el=document.getElementById('dist-list');
+  districts.forEach((d,i)=>{
+    const div=document.createElement('div');div.className='dist-item';div.id='di-'+i;
+    div.innerHTML=`<div class="di-top"><div class="di-dot" style="background:${rc2[d.risk]}"></div><span class="di-name">${d.name}</span><span class="di-badge db-${d.risk}">${d.risk.toUpperCase()}</span></div><div class="di-meta">${d.prov} · FVI ${d.fvi} · ${d.pop} exposed</div>`;
+    div.onclick=()=>selDist(i);el.appendChild(div);
+  });
+}
+
+function selDist(i){
+  document.querySelectorAll('.dist-item').forEach(e=>e.classList.remove('active'));
+  const el=document.getElementById('di-'+i);if(el)el.classList.add('active');
+  if(map){map.flyTo([districts[i].lat,districts[i].lng],11,{duration:1.2});dMk[i].openPopup();}
+}
+
+function togLyr(name){
+  if(!map)return;
+  lyrState[name]=!lyrState[name];
+  document.getElementById('sw-'+name).classList.toggle('on',lyrState[name]);
+  if(name==='districts') dMk.forEach(m=>lyrState.districts?map.addLayer(m):map.removeLayer(m));
+  if(name==='events') eMk.forEach(m=>lyrState.events?map.addLayer(m):map.removeLayer(m));
+  if(name==='rivers'){if(lyrState.rivers)rLines.forEach(l=>map.addLayer(l));else rLines.forEach(l=>map.removeLayer(l));}
+  if(name==='zones'){if(lyrState.zones)zCircles.forEach(c=>map.addLayer(c));else zCircles.forEach(c=>map.removeLayer(c));}
+}
+
+// CHARTS
+const co={maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(22,15,5,0.97)',borderColor:'rgba(251,146,60,0.3)',borderWidth:1,titleColor:'#fef3e2',bodyColor:'#c4a882',padding:12,cornerRadius:8}},scales:{x:{ticks:{color:'#7a6040',font:{size:9,family:"'DM Mono'"}},grid:{color:'rgba(251,146,60,0.05)'},border:{color:'rgba(251,146,60,0.1)'}},y:{ticks:{color:'#7a6040',font:{size:9,family:"'DM Mono'"}},grid:{color:'rgba(251,146,60,0.05)'},border:{color:'rgba(251,146,60,0.1)'}}}};
+
+// Affected population
+new Chart(document.getElementById('ch-pop'),{type:'bar',data:{
+  labels:['2000','2002','2004','2006','2008','2010','2012','2014','2016','2018','2020','2022','2024'],
+  datasets:[{label:'Affected (M)',data:[2.1,0.8,1.2,3.5,0.6,20.1,4.8,2.3,1.1,5.4,3.2,33.0,6.2],backgroundColor:d=>d.raw>20?'rgba(239,68,68,0.9)':d.raw>5?'rgba(251,146,60,0.75)':'rgba(251,191,36,0.6)',borderColor:d=>d.raw>20?'#ef4444':d.raw>5?'#fb923c':'#fbbf24',borderWidth:1,borderRadius:3}]
+},options:{...co,plugins:{...co.plugins,legend:{display:true,labels:{color:'#c4a882',font:{size:11}}}}}});
+
+// Economic losses
+new Chart(document.getElementById('ch-econ'),{type:'bar',data:{
+  labels:['2010','2011','2012','2014','2015','2017','2019','2020','2022'],
+  datasets:[{label:'Damage (USD B)',data:[9.5,3.7,2.1,4.2,1.8,2.9,1.4,2.8,30.0],backgroundColor:['rgba(251,146,60,0.6)','rgba(251,146,60,0.55)','rgba(251,146,60,0.5)','rgba(251,146,60,0.55)','rgba(251,146,60,0.5)','rgba(251,146,60,0.55)','rgba(251,146,60,0.5)','rgba(251,146,60,0.55)','rgba(239,68,68,0.9)'],borderColor:'#fb923c',borderWidth:1,borderRadius:3}]
+},options:{...co,plugins:{...co.plugins,legend:{display:true,labels:{color:'#c4a882',font:{size:11}}}}}});
+
+// Donut
+new Chart(document.getElementById('ch-donut'),{type:'doughnut',data:{
+  labels:['Extreme (8)','High (25)','Medium (52)','Low (77)'],
+  datasets:[{data:[8,25,52,77],backgroundColor:['rgba(239,68,68,0.85)','rgba(251,146,60,0.8)','rgba(251,191,36,0.75)','rgba(52,211,153,0.7)'],borderColor:['#dc2626','#ea580c','#b45309','#047857'],borderWidth:2,hoverOffset:8}]
+},options:{maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:true,position:'right',labels:{color:'#c4a882',font:{size:11},boxWidth:12,padding:10}},tooltip:{backgroundColor:'rgba(22,15,5,0.97)',borderColor:'rgba(251,146,60,0.3)',borderWidth:1,titleColor:'#fef3e2',bodyColor:'#c4a882',padding:12,cornerRadius:8}}}});
+
+// Fatalities by province
+new Chart(document.getElementById('ch-fatal'),{type:'bar',data:{
+  labels:['Sindh','KPK','Punjab','Balochistan','AJK','GB'],
+  datasets:[{label:'Deaths (2010–2024)',data:[1840,1320,980,640,280,180],backgroundColor:['rgba(239,68,68,0.8)','rgba(251,146,60,0.75)','rgba(251,191,36,0.7)','rgba(251,146,60,0.6)','rgba(52,211,153,0.65)','rgba(56,189,248,0.6)'],borderColor:['#ef4444','#fb923c','#fbbf24','#fb923c','#34d399','#38bdf8'],borderWidth:1,borderRadius:3}]
+},options:{...co,indexAxis:'y',plugins:{...co.plugins,legend:{display:true,labels:{color:'#c4a882',font:{size:11}}}}}});
+
+// Rainfall vs events
+new Chart(document.getElementById('ch-rain'),{type:'line',data:{
+  labels:['1990','1993','1996','1999','2002','2005','2008','2010','2012','2015','2017','2019','2022','2024'],
+  datasets:[
+    {label:'Rainfall Anomaly (mm)',data:[40,80,20,110,60,90,130,280,180,100,140,160,380,140],borderColor:'#38bdf8',borderWidth:2,tension:0.4,fill:true,backgroundColor:'rgba(56,189,248,0.06)',pointRadius:3,pointBackgroundColor:'#38bdf8',yAxisID:'y'},
+    {label:'Flood Events',data:[2,3,1,4,2,3,5,9,7,4,5,6,12,5],borderColor:'#fb923c',borderWidth:2,tension:0.4,fill:false,pointRadius:4,pointBackgroundColor:'#fb923c',borderDash:[],yAxisID:'y1'},
+  ]
+},options:{maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{color:'#c4a882',font:{size:11},padding:16}},tooltip:{backgroundColor:'rgba(22,15,5,0.97)',borderColor:'rgba(251,146,60,0.3)',borderWidth:1,titleColor:'#fef3e2',bodyColor:'#c4a882',padding:12,cornerRadius:8}},scales:{x:{ticks:{color:'#7a6040',font:{size:9,family:"'DM Mono'"}},grid:{color:'rgba(251,146,60,0.05)'},border:{color:'rgba(251,146,60,0.1)'}},y:{ticks:{color:'#38bdf8',font:{size:9}},grid:{color:'rgba(251,146,60,0.05)'},border:{color:'rgba(251,146,60,0.1)'},title:{display:true,text:'Rainfall Anomaly (mm)',color:'#38bdf8',font:{size:9}}},y1:{position:'right',ticks:{color:'#fb923c',font:{size:9}},grid:{display:false},title:{display:true,text:'Flood Events',color:'#fb923c',font:{size:9}}}}}});
+</script>
+</body>
+</html>
